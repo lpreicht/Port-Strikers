@@ -12,6 +12,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: strikers-r36s-v01
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-24.04
