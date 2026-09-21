@@ -8,6 +8,80 @@ if len(sys.argv) != 3:
 root = Path(sys.argv[1])
 melee = Path(sys.argv[2])
 
+# Fast Aurora intentionally wins renderer merge conflicts. Re-add only the small
+# Strikers-facing ABI surface that the game sources require on the handheld.
+aurora_h = root / "extern/aurora/include/aurora/aurora.h"
+hs = aurora_h.read_text()
+if "bool startMaximized;" not in hs:
+    marker = "  bool startFullscreen;\n"
+    if marker not in hs:
+        raise SystemExit("aurora.h: startFullscreen marker not found")
+    hs = hs.replace(marker, marker + "  bool startMaximized; /* Strikers compatibility; ignored by external R36S window */\n", 1)
+
+compat_decls = """void aurora_capture_frame(const char* path);
+void aurora_gpu_frame_time(uint64_t* lastNs, uint64_t* meanNs, uint64_t* maxNs, uint64_t* count);
+void aurora_set_frame_buffer_scale(float scale);
+AuroraWindowSize aurora_window_size();
+void aurora_apply_frame_buffer_resize();
+"""
+if "void aurora_capture_frame(const char* path);" not in hs:
+    marker = "void aurora_shutdown();\n"
+    if marker not in hs:
+        raise SystemExit("aurora.h: shutdown declaration marker not found")
+    hs = hs.replace(marker, marker + compat_decls, 1)
+aurora_h.write_text(hs)
+
+compat_cpp = root / "src/platform/r36s_aurora_compat.cpp"
+compat_cpp.write_text(r'''#include <aurora/aurora.h>
+#include "window.hpp"
+
+#include <cstddef>
+#include <cstdint>
+
+extern "C" {
+
+void aurora_capture_frame(const char*) {
+  // Diagnostic-only feature on desktop. Keep the symbol for Strikers but avoid
+  // a WebGPU readback path on the direct-GLES handheld renderer.
+}
+
+void aurora_gpu_frame_time(uint64_t* lastNs, uint64_t* meanNs, uint64_t* maxNs, uint64_t* count) {
+  if (lastNs) *lastNs = 0;
+  if (meanNs) *meanNs = 0;
+  if (maxNs) *maxNs = 0;
+  if (count) *count = 0;
+}
+
+void aurora_set_frame_buffer_scale(float scale) {
+  aurora::window::set_frame_buffer_scale(scale);
+}
+
+AuroraWindowSize aurora_window_size() {
+  return aurora::window::get_window_size();
+}
+
+void aurora_apply_frame_buffer_resize() {
+  // Fixed-size R36S display: a deferred resize is sufficient and avoids reaching
+  // into Aurora's private swapchain implementation.
+  aurora::window::request_frame_buffer_resize();
+}
+
+void aurora_gfx_pool_stats(uint32_t* peakBytes, uint32_t* reservedBytes, size_t count) {
+  for (size_t i = 0; i < count; ++i) {
+    if (peakBytes) peakBytes[i] = 0;
+    if (reservedBytes) reservedBytes[i] = 0;
+  }
+}
+
+void aurora_gfx_texture_stats(uint64_t* srcBytes, uint64_t* uploadedBytes, uint64_t* count) {
+  if (srcBytes) *srcBytes = 0;
+  if (uploadedBytes) *uploadedBytes = 0;
+  if (count) *count = 0;
+}
+
+} // extern "C"
+''')
+
 # 1) Link Melee's proven SDL/KMSDRM + EGL pbuffer/present bridge into Strikers.
 cmake = root / "CMakeLists.txt"
 s = cmake.read_text()
@@ -21,13 +95,15 @@ find_library(STRIKERS_R36S_EGL EGL REQUIRED)
 find_library(STRIKERS_R36S_GLES GLESv2 REQUIRED)
 target_sources(strikers PRIVATE
     "{melee.as_posix()}/native/platform/flip/display.cpp"
-    "{melee.as_posix()}/native/platform/flip/present_worker.cpp")
+    "{melee.as_posix()}/native/platform/flip/present_worker.cpp"
+    "{(root / "src/platform/r36s_aurora_compat.cpp").as_posix()}")
 set_source_files_properties(
     "{melee.as_posix()}/native/platform/flip/display.cpp"
     "{melee.as_posix()}/native/platform/flip/present_worker.cpp"
     PROPERTIES COMPILE_OPTIONS "-std=gnu++20")
 target_include_directories(strikers PRIVATE
     "{melee.as_posix()}/native/platform/flip"
+    "{(root / "extern/aurora/lib").as_posix()}"
     "${{STRIKERS_R36S_DRM_INCLUDE_DIR}}")
 target_link_libraries(strikers PRIVATE
     "${{STRIKERS_R36S_EGL}}" "${{STRIKERS_R36S_GLES}}" dl)
