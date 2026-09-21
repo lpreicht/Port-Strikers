@@ -50,6 +50,31 @@ replace_once(
     "AuroraConfig cpuVertexDecode",
 )
 
+# Force the handheld decode path inside Aurora itself. This keeps GX state,
+# shader generation and draw submission on the same path even if the outer
+# application's config struct changes.
+aurora_cpp = aur / "lib/aurora.cpp"
+s = aurora_cpp.read_text()
+old = """AuroraInfo initialize(int argc, char* argv[], const AuroraConfig& config) noexcept {
+  g_config = config;
+  Log.info("Aurora initializing");
+"""
+new = """AuroraInfo initialize(int argc, char* argv[], const AuroraConfig& config) noexcept {
+  g_config = config;
+#ifdef MELEE_MIYOO_FLIP
+  g_config.cpuVertexDecode = true;
+#endif
+  Log.info("Aurora initializing");
+#ifdef MELEE_MIYOO_FLIP
+  Log.info("R36S CPU vertex decode: {}", g_config.cpuVertexDecode);
+#endif
+"""
+if new not in s:
+    if old not in s:
+        raise SystemExit("aurora.cpp config-copy marker not found")
+    s = s.replace(old, new, 1)
+aurora_cpp.write_text(s)
+
 # Directly reserve decoded vertex records in the per-frame stream.
 replace_once(
     aur / "lib/gfx/recording.cpp",
@@ -125,7 +150,11 @@ replace_once(
 """,
     """  config.shaderConfig.fogType = g_gxState.fog.type;
   config.shaderConfig.fogRangeEnabled = g_gxState.fog.rangeEnabled;
+#ifdef MELEE_MIYOO_FLIP
+  config.shaderConfig.cpuVertexDecode = true;
+#else
   config.shaderConfig.cpuVertexDecode = g_config.cpuVertexDecode;
+#endif
 """,
     "populate cpuVertexDecode",
 )
@@ -140,7 +169,14 @@ old = """  const auto label =
                   xxh3_hash(config.shaderConfig));
   return build_pipeline(config, {}, shader, label.c_str());
 """
-new = """  const auto label =
+new = """#ifdef MELEE_MIYOO_FLIP
+  static bool loggedCpuVertex = false;
+  if (!loggedCpuVertex) {
+    Log.info("R36S GX pipeline cpuVertexDecode={}", config.shaderConfig.cpuVertexDecode);
+    loggedCpuVertex = true;
+  }
+#endif
+  const auto label =
       fmt::format("GX Pipeline {:x} shader {:x}", xxh3_hash(config, static_cast<HashType>(gfx::ShaderType::GX)),
                   xxh3_hash(config.shaderConfig));
   if (config.shaderConfig.cpuVertexDecode) {
