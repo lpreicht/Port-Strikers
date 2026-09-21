@@ -52,6 +52,11 @@ HYBRID_SDK="$TOOLS/aarch64--glibc-2.30-hybrid"
 DAWN="$TOOLS/dawn-install-a35"
 SDL3="$TOOLS/sdl3-shim-install"
 
+# These must be visible to Melee's helper scripts themselves, not only to the final CMake step.
+export FLIP_TOOLCHAIN="$HYBRID_SDK"
+export FLIP_SDL3_ROOT="$SDL3"
+export FLIP_DAWN_PREFIX="$DAWN"
+
 # Build the same Cortex-A35 Dawn/toolchain stack used by the working native Melee port.
 # The workflow restores this from cache for normal compile attempts.
 if [ "${SKIP_PREP:-0}" != "1" ]; then
@@ -63,10 +68,6 @@ else
   test -f "$DAWN/lib/cmake/Dawn/DawnConfig.cmake"
   test -f "$SDL3/lib/libSDL3.so.0"
 fi
-
-export FLIP_TOOLCHAIN="$HYBRID_SDK"
-export FLIP_SDL3_ROOT="$SDL3"
-export FLIP_DAWN_PREFIX="$DAWN"
 
 if [ "${PREP_ONLY:-0}" = "1" ]; then
   echo "Toolchain/Dawn/SDL preparation complete."
