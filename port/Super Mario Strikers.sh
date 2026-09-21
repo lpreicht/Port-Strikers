@@ -77,7 +77,7 @@ export SDL3SHIM_SDL2_AUDIODRIVER="$inner_audio"
 export SDL_VIDEODRIVER=sdl2
 export SDL_AUDIODRIVER=sdl2
 
-echo "[launcher] SDL3 shim -> SDL2 video=$SDL3SHIM_SDL2_VIDEODRIVER audio=$SDL3SHIM_SDL2_AUDIODRIVER"
+# R36S/ArkOS: make PortMaster\'s kill combo deterministic. gptokeyb defaults to\n# BACK/SELECT unless HOTKEY was inherited from device detection; force it here.\nexport HOTKEY=back\n\necho "[launcher] SDL3 shim -> SDL2 video=$SDL3SHIM_SDL2_VIDEODRIVER audio=$SDL3SHIM_SDL2_AUDIODRIVER"
 
 # Known-good ArkOS Mali-G31 driver on the user's R36S.
 MALI="/usr/local/lib/aarch64-linux-gnu/libmali-bifrost-g31-rxp0-gbm.so"
@@ -88,6 +88,68 @@ fi
 
 export STRIKERS_DATA="${discs[0]}"
 export STRIKERS_CONFIG="$GAMEDIR/strikers.ini"
+
+# R36S performance mode, based on the settings used by the working native Melee port.
+# Enable all CPU cores and request performance governors while the game runs, then restore
+# the original firmware state on exit. Failures are non-fatal on firmwares that lock sysfs.
+enabled_cpu_paths=""
+cpu_governor_path=/sys/devices/system/cpu/cpufreq/policy0/scaling_governor
+gpu_governor_path=/sys/class/devfreq/fde60000.gpu/governor
+dmc_governor_path=/sys/class/devfreq/dmc/governor
+cpu_governor_previous=""
+gpu_governor_previous=""
+dmc_governor_previous=""
+
+strikers_write_sysfs() {
+  path="$1"
+  value="$2"
+  if [ -w "$path" ]; then
+    printf '%s\n' "$value" > "$path" 2>/dev/null
+    return $?
+  fi
+  if [ -n "${ESUDO:-}" ]; then
+    $ESUDO sh -c "printf '%s\\n' '$value' > '$path'" >/dev/null 2>&1
+    return $?
+  fi
+  return 1
+}
+
+strikers_restore_performance() {
+  [ -n "$cpu_governor_previous" ] && strikers_write_sysfs "$cpu_governor_path" "$cpu_governor_previous" || true
+  [ -n "$gpu_governor_previous" ] && strikers_write_sysfs "$gpu_governor_path" "$gpu_governor_previous" || true
+  [ -n "$dmc_governor_previous" ] && strikers_write_sysfs "$dmc_governor_path" "$dmc_governor_previous" || true
+  for cpu_path in $enabled_cpu_paths; do
+    strikers_write_sysfs "$cpu_path" 0 || true
+  done
+}
+trap strikers_restore_performance EXIT
+
+if [ "${STRIKERS_PERFORMANCE:-1}" = 1 ]; then
+  if [ -r "$cpu_governor_path" ]; then
+    previous="$(cat "$cpu_governor_path" 2>/dev/null || true)"
+    if strikers_write_sysfs "$cpu_governor_path" performance; then cpu_governor_previous="$previous"; fi
+  fi
+  if [ -r "$gpu_governor_path" ]; then
+    previous="$(cat "$gpu_governor_path" 2>/dev/null || true)"
+    if strikers_write_sysfs "$gpu_governor_path" performance; then gpu_governor_previous="$previous"; fi
+  fi
+  if [ -r "$dmc_governor_path" ]; then
+    previous="$(cat "$dmc_governor_path" 2>/dev/null || true)"
+    if strikers_write_sysfs "$dmc_governor_path" performance; then dmc_governor_previous="$previous"; fi
+  fi
+  for cpu_path in /sys/devices/system/cpu/cpu[0-9]*/online; do
+    [ -r "$cpu_path" ] || continue
+    if [ "$(cat "$cpu_path" 2>/dev/null || echo 1)" = 0 ]; then
+      if strikers_write_sysfs "$cpu_path" 1; then
+        enabled_cpu_paths="$enabled_cpu_paths $cpu_path"
+      fi
+    fi
+  done
+fi
+
+# Presentation worker defaults validated by the handheld Aurora path.
+export MELEE_FLIP_PRESENT_THREAD="${MELEE_FLIP_PRESENT_THREAD:-1}"
+export MELEE_FLIP_ASYNC_PRESENT="${MELEE_FLIP_ASYNC_PRESENT:-1}"
 
 chmod +x "$GAMEDIR/strikers.aarch64"
 $GPTOKEYB2 "strikers.aarch64" -c "$GAMEDIR/strikers.gptk.ini" &
