@@ -74,6 +74,22 @@ if [ "${PREP_ONLY:-0}" = "1" ]; then
   exit 0
 fi
 
+# Strikers upstream forces -static-libgcc. GCC 12's static unwinder references _dl_find_object
+# (glibc 2.35), while the hybrid toolchain intentionally ships the old glibc-2.30-compatible
+# libgcc_s.so.1. Keep libstdc++ static but let libgcc resolve dynamically.
+python3 - "$STRIKERS/CMakeLists.txt" <<'PY'
+from pathlib import Path
+import sys
+p = Path(sys.argv[1])
+s = p.read_text()
+old = "target_link_options(strikers PRIVATE -static-libstdc++ -static-libgcc -Wl,-z,noexecstack)"
+new = "target_link_options(strikers PRIVATE -static-libstdc++ -Wl,-z,noexecstack)"
+if new not in s:
+    if old not in s:
+        raise SystemExit("could not locate static libgcc link options")
+    s = s.replace(old, new, 1)
+    p.write_text(s)
+PY
 # Dawn's exported CMake target references Threads::Threads. Aurora's system provider
 # currently imports Dawn before it calls find_package(Threads), which is too late for
 # CMake to validate DawnTargets.cmake. Load Threads immediately before Dawn.
@@ -116,6 +132,18 @@ if ! cmake -S "$STRIKERS" -B "$BUILD" -G Ninja \
   exit 30
 fi
 
+# Compile every translation unit first, without requiring the executable to link.
+cmake --build "$BUILD" --target strikers_scan --parallel "${BUILD_JOBS:-4}"
+
+# The checked-in stubs were generated on Mach-O and therefore have leading underscores.
+# Regenerate them from the AArch64 ELF objects exactly as Strikers upstream rebuild.sh does.
+(
+  cd "$STRIKERS"
+  STRIKERS_SYMBOL_PREFIX= STRIKERS_BUILD_DIR="$BUILD" python3 tools/genstubs.py \
+    --noop "^GX|^snd|^AI|^AR"
+)
+
+# stubs_generated.c changed, so Ninja recompiles it and performs the real final link.
 cmake --build "$BUILD" --target strikers --parallel "${BUILD_JOBS:-4}"
 
 # ArkOS compatibility gate.
