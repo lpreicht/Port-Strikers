@@ -10,7 +10,7 @@ BUILD="$WORK/strikers-r36s"
 DIST="$ROOT/dist"
 
 STRIKERS_TAG="v1.2.0"
-AURORA_REV="5aeb0bf76a8059d32a646d4653356b2aa0429b20"
+AURORA_REV="f6275d6995cd4966cc993cc45a1530bafc2f297e"
 
 mkdir -p "$WORK" "$DIST"
 
@@ -19,6 +19,23 @@ if [ ! -d "$WORK/strikers/.git" ]; then
 fi
 if [ ! -d "$MELEE/.git" ]; then
   git clone --depth 1 --branch portmaster https://github.com/zalo/melee.git "$MELEE"
+fi
+
+# Rebase Strikers game-specific Aurora changes onto the current handheld Aurora fork
+# before spending time building Dawn/SDK. --3way uses shared Aurora history.
+rm -rf "$STRIKERS/extern/aurora"
+git clone https://github.com/zalo/aurora-arm.git "$STRIKERS/extern/aurora"
+git -C "$STRIKERS/extern/aurora" checkout --detach "$AURORA_REV"
+git -C "$STRIKERS/extern/aurora" config user.email "actions@users.noreply.github.com"
+git -C "$STRIKERS/extern/aurora" config user.name "R36S build"
+
+if ! git -C "$STRIKERS/extern/aurora" apply --3way "$STRIKERS/tools/aurora-local-changes.patch"; then
+  echo "::error::Automatic three-way Aurora rebase left conflicts."
+  echo "=== conflicted files ==="
+  git -C "$STRIKERS/extern/aurora" status --short || true
+  echo "=== conflict markers ==="
+  grep -RIn "^<<<<<<<\\|^=======\\|^>>>>>>>" "$STRIKERS/extern/aurora" --exclude-dir=.git || true
+  exit 20
 fi
 
 export RUSTUP_HOME="$TOOLS/rustup"
@@ -41,23 +58,10 @@ SDL3="$TOOLS/sdl3-shim-install"
 sh "$MELEE/native/tools/glibc230_toolchain.sh" build "$PLAIN_SDK" "$HYBRID_SDK"
 export FLIP_TOOLCHAIN="$HYBRID_SDK"
 
-# SDL3 API over the CFW's SDL2 implementation.
+# SDL3 API over the CFW SDL2 implementation.
 sh "$MELEE/native/tools/build_sdl3_shim.sh" "$SDL3"
 export FLIP_SDL3_ROOT="$SDL3"
 export FLIP_DAWN_PREFIX="$DAWN"
-
-# Replace Strikers' upstream Aurora snapshot with the handheld Aurora fork used by native Melee.
-rm -rf "$STRIKERS/extern/aurora"
-git clone https://github.com/zalo/aurora-arm.git "$STRIKERS/extern/aurora"
-git -C "$STRIKERS/extern/aurora" checkout --detach "$AURORA_REV"
-
-# Keep Strikers' game-specific Aurora fixes. If this conflicts, the CI log tells us the exact rebase needed.
-if ! git -C "$STRIKERS/extern/aurora" apply --check "$STRIKERS/tools/aurora-local-changes.patch"; then
-  echo "::error::Strikers Aurora patch does not apply cleanly to the handheld Aurora fork."
-  git -C "$STRIKERS/extern/aurora" apply --check --verbose "$STRIKERS/tools/aurora-local-changes.patch" || true
-  exit 20
-fi
-git -C "$STRIKERS/extern/aurora" apply "$STRIKERS/tools/aurora-local-changes.patch"
 
 TOOLCHAIN="$MELEE/native/platform/flip/toolchain-a35.cmake"
 
@@ -83,7 +87,6 @@ cmake -S "$STRIKERS" -B "$BUILD" -G Ninja \
 
 cmake --build "$BUILD" --target strikers --parallel "${BUILD_JOBS:-4}"
 
-# ArkOS compatibility gate.
 sh "$MELEE/native/tools/glibc230_toolchain.sh" verify "$PLAIN_SDK" "$BUILD/strikers"
 
 rm -rf "$DIST/stage"
