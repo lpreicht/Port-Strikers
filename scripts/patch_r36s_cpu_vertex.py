@@ -682,4 +682,81 @@ if new not in s:
     s = s.replace(old, new, 1)
 frame_h.write_text(s)
 
+
+# Dawn compatibility-mode limits for Mali GLES. CPU vertex decode removes all
+# vertex-stage storage-buffer reads, so this device request must explicitly ask
+# for zero vertex-stage storage buffers while keeping two for the fragment stage.
+gpu = aur / "lib/webgpu/gpu.cpp"
+s = gpu.read_text()
+
+old = """    wgpu::CompatibilityModeLimits compatibilityModeLimits{wgpu::CompatibilityModeLimits::Init{
+        .maxStorageBuffersInVertexStage = 2,
+        .maxStorageBuffersInFragmentStage = 2,
+    }};
+"""
+new = """    wgpu::CompatibilityModeLimits compatibilityModeLimits{wgpu::CompatibilityModeLimits::Init{
+#ifdef MELEE_MIYOO_FLIP
+        // Mali-G31 GLES exposes zero vertex-stage storage blocks. Vertex data is
+        // supplied through AuroraConfig::cpuVertexDecode on the R36S.
+        .maxStorageBuffersInVertexStage = 0,
+#else
+        .maxStorageBuffersInVertexStage = 2,
+#endif
+        .maxStorageBuffersInFragmentStage = 2,
+    }};
+"""
+if new not in s:
+    if old not in s:
+        raise SystemExit("gpu compatibility storage-limit block not found")
+    s = s.replace(old, new, 1)
+
+old = """        .maxStorageBuffersPerShaderStage = 2,
+        .minUniformBufferOffsetAlignment =
+"""
+new = """        .maxStorageBuffersPerShaderStage = 2,
+#ifdef MELEE_MIYOO_FLIP
+        .maxUniformBufferBindingSize = supportedLimits.maxUniformBufferBindingSize,
+#endif
+        .minUniformBufferOffsetAlignment =
+"""
+if new not in s:
+    if old not in s:
+        raise SystemExit("gpu maxUniformBufferBindingSize insertion point not found")
+    s = s.replace(old, new, 1)
+
+# Emit the compatibility-stage limits in the runtime log so device reports tell
+# us immediately whether the handheld branch made it into the binary.
+old = """        "\\n  maxStorageBuffersPerShaderStage: {}"
+        "\\n  minUniformBufferOffsetAlignment: {}"
+"""
+new = """        "\\n  maxStorageBuffersPerShaderStage: {}"
+        "\\n  maxStorageBuffersInVertexStage: {}"
+        "\\n  maxStorageBuffersInFragmentStage: {}"
+        "\\n  minUniformBufferOffsetAlignment: {}"
+"""
+if new not in s:
+    if old not in s:
+        raise SystemExit("gpu runtime limit-log format insertion point not found")
+    s = s.replace(old, new, 1)
+
+old = """        requiredLimits.maxStorageBuffersPerShaderStage, requiredLimits.minUniformBufferOffsetAlignment,
+        requiredLimits.minStorageBufferOffsetAlignment, requiredLimits.maxImmediateSize);
+"""
+new = """        requiredLimits.maxStorageBuffersPerShaderStage, compatibilityModeLimits.maxStorageBuffersInVertexStage,
+        compatibilityModeLimits.maxStorageBuffersInFragmentStage, requiredLimits.minUniformBufferOffsetAlignment,
+        requiredLimits.minStorageBufferOffsetAlignment, requiredLimits.maxImmediateSize);
+"""
+if new not in s:
+    if old not in s:
+        raise SystemExit("gpu runtime limit-log args insertion point not found")
+    s = s.replace(old, new, 1)
+
+gpu.write_text(s)
+
+# Build-time guard: never produce another nominally successful R36S build that
+# still requests two vertex-stage storage buffers.
+verify = gpu.read_text()
+if ".maxStorageBuffersInVertexStage = 0" not in verify or "#ifdef MELEE_MIYOO_FLIP" not in verify:
+    raise SystemExit("R36S Mali Dawn limit verification failed")
+
 print("Applied Aurora CPU vertex decode for R36S Mali GLES")
