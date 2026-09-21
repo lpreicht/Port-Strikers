@@ -35,6 +35,17 @@ export XDG_STATE_HOME="$GAMEDIR/runtime/state"
 export XDG_CACHE_HOME="$GAMEDIR/runtime/cache"
 mkdir -p "$XDG_CONFIG_HOME" "$XDG_STATE_HOME" "$XDG_CACHE_HOME"
 
+# CPU-vertex builds must not reuse Dawn pipeline data produced by the old
+# storage-buffer vertex path. Reset only the Dawn cache once; keep CARD saves.
+CACHE_RESET_MARKER="$GAMEDIR/runtime/.cpu_vertex_cache_reset_v1"
+if [ ! -f "$CACHE_RESET_MARKER" ]; then
+  rm -f "$HOME/.local/share/Super Mario Strikers/dawn_cache.db" \
+        "$HOME/.local/share/Super Mario Strikers/dawn_cache.db-shm" \
+        "$HOME/.local/share/Super Mario Strikers/dawn_cache.db-wal"
+  touch "$CACHE_RESET_MARKER"
+  echo "[launcher] reset old Dawn cache for CPU vertex decode"
+fi
+
 if [ ${#sdl_controllerconfig} -lt 100000 ]; then
   export SDL_GAMECONTROLLERCONFIG="$sdl_controllerconfig"
 fi
