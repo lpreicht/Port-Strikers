@@ -41,7 +41,12 @@ jobs:
           key: strikers-r36s-a35-glibc230-dawn-v1
 
       - name: Prepare handheld toolchain
-        run: PREP_ONLY=1 bash scripts/build_v01.sh
+        run: |
+          if [ "${{ steps.toolchain-cache.outputs.cache-hit }}" = "true" ]; then
+            SKIP_PREP=1 PREP_ONLY=1 bash scripts/build_v01.sh
+          else
+            PREP_ONLY=1 bash scripts/build_v01.sh
+          fi
 
       - name: Save handheld SDK and Dawn
         if: steps.toolchain-cache.outputs.cache-hit != 'true'
