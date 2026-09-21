@@ -699,4 +699,42 @@ if new not in s:
     s = s.replace(old, new, 1)
 frame_h.write_text(s)
 
+# Dawn compatibility-mode limits for Mali: the proprietary GLES driver exposes
+# zero vertex-stage storage blocks. CPU vertex decode makes that valid.
+gpu = aur / "lib/webgpu/gpu.cpp"
+s = gpu.read_text()
+old = """    wgpu::CompatibilityModeLimits compatibilityModeLimits{wgpu::CompatibilityModeLimits::Init{
+        .maxStorageBuffersInVertexStage = 2,
+        .maxStorageBuffersInFragmentStage = 2,
+    }};
+"""
+new = """    wgpu::CompatibilityModeLimits compatibilityModeLimits{wgpu::CompatibilityModeLimits::Init{
+#ifdef MELEE_MIYOO_FLIP
+        .maxStorageBuffersInVertexStage = 0,
+#else
+        .maxStorageBuffersInVertexStage = 2,
+#endif
+        .maxStorageBuffersInFragmentStage = 2,
+    }};
+"""
+if new not in s:
+    if old not in s:
+        raise SystemExit("gpu compatibility storage limit block not found")
+    s = s.replace(old, new, 1)
+
+old = """        .maxStorageBuffersPerShaderStage = 2,
+        .minUniformBufferOffsetAlignment =
+"""
+new = """        .maxStorageBuffersPerShaderStage = 2,
+#ifdef MELEE_MIYOO_FLIP
+        .maxUniformBufferBindingSize = supportedLimits.maxUniformBufferBindingSize,
+#endif
+        .minUniformBufferOffsetAlignment =
+"""
+if new not in s:
+    if old not in s:
+        raise SystemExit("gpu uniform binding limit insertion not found")
+    s = s.replace(old, new, 1)
+gpu.write_text(s)
+
 print("Applied Aurora CPU vertex decode for R36S Mali GLES")
