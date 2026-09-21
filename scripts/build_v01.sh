@@ -51,6 +51,27 @@ sh "$MELEE/native/tools/build_sdl3_shim.sh" "$SDL3"
 export FLIP_SDL3_ROOT="$SDL3"
 export FLIP_DAWN_PREFIX="$DAWN"
 
+if [ "${PREP_ONLY:-0}" = "1" ]; then
+  echo "Toolchain/Dawn/SDL preparation complete."
+  exit 0
+fi
+
+# Dawn's imported target references Threads::Threads. Strikers does not create
+# that imported target early enough when cross-compiling, so inject it before generate.
+python3 - "$STRIKERS/CMakeLists.txt" <<'PY'
+from pathlib import Path
+import sys
+p = Path(sys.argv[1])
+s = p.read_text()
+needle = "if(STRIKERS_AURORA)\n"
+insert = "if(STRIKERS_AURORA)\n    set(THREADS_PREFER_PTHREAD_FLAG ON)\n    find_package(Threads REQUIRED)\n"
+if "find_package(Threads REQUIRED)" not in s:
+    if needle not in s:
+        raise SystemExit("could not locate STRIKERS_AURORA block")
+    s = s.replace(needle, insert, 1)
+    p.write_text(s)
+PY
+
 TOOLCHAIN="$MELEE/native/platform/flip/toolchain-a35.cmake"
 
 rm -rf "$BUILD"
