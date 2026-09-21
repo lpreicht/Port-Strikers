@@ -22,6 +22,10 @@ find_library(STRIKERS_R36S_GLES GLESv2 REQUIRED)
 target_sources(strikers PRIVATE
     "{melee.as_posix()}/native/platform/flip/display.cpp"
     "{melee.as_posix()}/native/platform/flip/present_worker.cpp")
+set_source_files_properties(
+    "{melee.as_posix()}/native/platform/flip/display.cpp"
+    "{melee.as_posix()}/native/platform/flip/present_worker.cpp"
+    PROPERTIES COMPILE_OPTIONS "-std=gnu++20")
 target_include_directories(strikers PRIVATE
     "{melee.as_posix()}/native/platform/flip"
     "${{STRIKERS_R36S_DRM_INCLUDE_DIR}}")
@@ -217,5 +221,21 @@ if new not in s:
         raise SystemExit("gpu.cpp: EGL proc block not found")
     s = s.replace(old, new, 1)
 gpu.write_text(s)
+
+# 7) The Melee bridge normally inherits C++20 and several transitive standard
+# headers from Melee's own target. Strikers' main target is C++11, so make the
+# bridge self-contained instead of relying on include order.
+display_cpp = melee / "native/platform/flip/display.cpp"
+ds = display_cpp.read_text()
+if "#include <type_traits>" not in ds:
+    ds = ds.replace("#include <limits>\n", "#include <limits>\n#include <type_traits>\n", 1)
+    display_cpp.write_text(ds)
+
+present_cpp = melee / "native/platform/flip/present_worker.cpp"
+ps = present_cpp.read_text()
+if "#include <limits>" not in ps:
+    ps = ps.replace("#include <dawn/native/OpenGLBackend.h>\n",
+                    "#include <limits>\n#include <dawn/native/OpenGLBackend.h>\n", 1)
+    present_cpp.write_text(ps)
 
 print("Applied R36S SDL/KMSDRM + Dawn EGL/pbuffer display bridge")
