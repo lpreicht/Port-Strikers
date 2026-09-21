@@ -60,6 +60,7 @@ new = '''        PortAuroraConfigure(&cfg);
         wantBackend = BACKEND_OPENGLES;
         cfg.vsync = false;
         cfg.allowJoystickBackgroundEvents = true;
+        cfg.cpuVertexDecode = true;
         MeleeFlipInitDisplay();
         {
             unsigned displayW = 640, displayH = 480;
