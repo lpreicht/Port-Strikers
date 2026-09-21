@@ -54,12 +54,12 @@ export FLIP_DAWN_PREFIX="$DAWN"
 TOOLCHAIN="$MELEE/native/platform/flip/toolchain-a35.cmake"
 
 rm -rf "$BUILD"
-cmake -S "$STRIKERS" -B "$BUILD" -G Ninja \
+if ! cmake -S "$STRIKERS" -B "$BUILD" -G Ninja \
   -DCMAKE_TOOLCHAIN_FILE="$TOOLCHAIN" \
   -DCMAKE_BUILD_TYPE=Release \
   -DCMAKE_C_FLAGS="-mcpu=cortex-a35+nocrypto" \
-  -DCMAKE_CXX_FLAGS="-mcpu=cortex-a35+nocrypto" \
-  -DCMAKE_EXE_LINKER_FLAGS="-Wl,--allow-shlib-undefined" \
+  -DCMAKE_CXX_FLAGS="-mcpu=cortex-a35+nocrypto -pthread" \
+  -DCMAKE_EXE_LINKER_FLAGS="-pthread -Wl,--allow-shlib-undefined" \
   -DSTRIKERS_FFMPEG=OFF \
   -DSTRIKERS_AURORA=ON \
   -DAURORA_DAWN_PROVIDER=system \
@@ -71,7 +71,11 @@ cmake -S "$STRIKERS" -B "$BUILD" -G Ninja \
   -DRust_CARGO_TARGET=aarch64-unknown-linux-gnu \
   -DBUILD_SHARED_LIBS=OFF \
   -DAURORA_CACHE_USE_ZSTD=OFF \
-  -DTRACY_ENABLE=OFF
+  -DTRACY_ENABLE=OFF; then
+  echo "=== CMake configure diagnostics ==="
+  [ -f "$BUILD/CMakeFiles/CMakeConfigureLog.yaml" ] && tail -n 300 "$BUILD/CMakeFiles/CMakeConfigureLog.yaml" || true
+  exit 30
+fi
 
 cmake --build "$BUILD" --target strikers --parallel "${BUILD_JOBS:-4}"
 
