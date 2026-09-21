@@ -58,10 +58,22 @@ git -C "$FAST_AURORA" -c user.name="Strikers R36S Builder" -c user.email="builde
 
 if ! git -C "$FAST_AURORA" -c user.name="Strikers R36S Builder" -c user.email="builder@localhost" \
     merge --no-edit "$FAST_AURORA_REV"; then
-  echo "::error::Fast Aurora three-way merge has conflicts"
-  git -C "$FAST_AURORA" status --short || true
-  git -C "$FAST_AURORA" diff --name-only --diff-filter=U || true
-  exit 24
+  # The common-base merge is deliberate. For files changed by both trees, prefer
+  # the handheld renderer implementation; Strikers' required public compatibility
+  # hooks are reintroduced below by patch_r36s_display.py. All non-conflicting
+  # title-specific changes remain merged normally.
+  mapfile -t merge_conflicts < <(git -C "$FAST_AURORA" diff --name-only --diff-filter=U)
+  if [ "${#merge_conflicts[@]}" -eq 0 ]; then
+    echo "::error::Fast Aurora merge failed without resolvable file conflicts"
+    git -C "$FAST_AURORA" status --short || true
+    exit 24
+  fi
+  printf 'Resolving fast-Aurora conflicts with handheld side:\n'
+  printf '  %s\n' "${merge_conflicts[@]}"
+  git -C "$FAST_AURORA" checkout --theirs -- "${merge_conflicts[@]}"
+  git -C "$FAST_AURORA" add -- "${merge_conflicts[@]}"
+  git -C "$FAST_AURORA" -c user.name="Strikers R36S Builder" -c user.email="builder@localhost" \
+    commit --no-edit
 fi
 
 # Use the merged worktree as Strikers' vendored Aurora, without carrying nested
