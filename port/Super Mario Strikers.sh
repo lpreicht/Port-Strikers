@@ -41,15 +41,26 @@ fi
 
 export LD_LIBRARY_PATH="$GAMEDIR/libs.${DEVICE_ARCH}:${LD_LIBRARY_PATH:-}"
 
-# SDL3-over-SDL2 shim: use ArkOS' own SDL2 display/audio/controller backends.
-if [ -n "${SDL_VIDEODRIVER:-}" ] && [ -z "${SDL3SHIM_SDL2_VIDEODRIVER:-}" ]; then
-  export SDL3SHIM_SDL2_VIDEODRIVER="$SDL_VIDEODRIVER"
+# SDL3-over-SDL2 shim. SDL3 itself uses the shim's "sdl2" driver, while
+# the SDL2 instance loaded inside the shim must use the CFW's real backend.
+inner_video="${SDL3SHIM_SDL2_VIDEODRIVER:-${SDL_VIDEODRIVER:-}}"
+inner_audio="${SDL3SHIM_SDL2_AUDIODRIVER:-${SDL_AUDIODRIVER:-}}"
+
+# ArkOS/R36S uses SDL2 KMSDRM + ALSA. "sdl2" is only the outer SDL3 shim name
+# and is not a valid SDL2 video/audio backend.
+if [ "${CFW_NAME:-}" = "ArkOS" ] || [ "${inner_video:-}" = "sdl2" ] || [ -z "${inner_video:-}" ]; then
+  inner_video="kmsdrm"
 fi
-if [ -n "${SDL_AUDIODRIVER:-}" ] && [ -z "${SDL3SHIM_SDL2_AUDIODRIVER:-}" ]; then
-  export SDL3SHIM_SDL2_AUDIODRIVER="$SDL_AUDIODRIVER"
+if [ "${CFW_NAME:-}" = "ArkOS" ] || [ "${inner_audio:-}" = "sdl2" ] || [ -z "${inner_audio:-}" ]; then
+  inner_audio="alsa"
 fi
+
+export SDL3SHIM_SDL2_VIDEODRIVER="$inner_video"
+export SDL3SHIM_SDL2_AUDIODRIVER="$inner_audio"
 export SDL_VIDEODRIVER=sdl2
 export SDL_AUDIODRIVER=sdl2
+
+echo "[launcher] SDL3 shim -> SDL2 video=$SDL3SHIM_SDL2_VIDEODRIVER audio=$SDL3SHIM_SDL2_AUDIODRIVER"
 
 # Known-good ArkOS Mali-G31 driver on the user's R36S.
 MALI="/usr/local/lib/aarch64-linux-gnu/libmali-bifrost-g31-rxp0-gbm.so"
