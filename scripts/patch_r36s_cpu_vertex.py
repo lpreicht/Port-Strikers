@@ -159,6 +159,16 @@ replace_once(
     "populate cpuVertexDecode",
 )
 
+# ShaderConfig layout changed by cpuVertexDecode. Bump the serialized GX pipeline
+# config version so Aurora never reinterprets an old storage-buffer config as a
+# current CPU-decoded config.
+replace_once(
+    aur / "lib/gx/pipeline.hpp",
+    "constexpr uint32_t GXPipelineConfigVersion = 13;",
+    "constexpr uint32_t GXPipelineConfigVersion = 14;",
+    "GX pipeline cache version",
+)
+
 # Pipeline: conventional vertex input when CPU decode is enabled.
 pipeline = aur / "lib/gx/pipeline.cpp"
 s = pipeline.read_text()
