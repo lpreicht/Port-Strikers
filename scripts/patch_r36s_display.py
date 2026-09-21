@@ -24,9 +24,9 @@ target_sources(strikers PRIVATE
     "{melee.as_posix()}/native/platform/flip/present_worker.cpp")
 target_include_directories(strikers PRIVATE
     "{melee.as_posix()}/native/platform/flip"
-    "${STRIKERS_R36S_DRM_INCLUDE_DIR}")
+    "${{STRIKERS_R36S_DRM_INCLUDE_DIR}}")
 target_link_libraries(strikers PRIVATE
-    "${STRIKERS_R36S_EGL}" "${STRIKERS_R36S_GLES}" dl)
+    "${{STRIKERS_R36S_EGL}}" "${{STRIKERS_R36S_GLES}}" dl)
 '''
     if needle not in s:
         raise SystemExit("CMake: strikers target link marker not found")
