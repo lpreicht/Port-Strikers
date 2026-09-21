@@ -106,6 +106,11 @@ if repl not in s:
     s = s.replace(needle, repl, 1)
     p.write_text(s)
 PY
+
+# Add the R36S/ArkOS display bridge: external SDL window + Dawn EGL pbuffer +
+# shared-context GLES presentation, using the same platform code as Melee PortMaster.
+python3 "$ROOT/scripts/patch_r36s_display.py" "$STRIKERS" "$MELEE"
+
 TOOLCHAIN="$MELEE/native/platform/flip/toolchain-a35.cmake"
 
 rm -rf "$BUILD"
@@ -113,7 +118,7 @@ if ! cmake -S "$STRIKERS" -B "$BUILD" -G Ninja \
   -DCMAKE_TOOLCHAIN_FILE="$TOOLCHAIN" \
   -DCMAKE_BUILD_TYPE=Release \
   -DCMAKE_C_FLAGS="-mcpu=cortex-a35+nocrypto" \
-  -DCMAKE_CXX_FLAGS="-mcpu=cortex-a35+nocrypto -pthread" \
+  -DCMAKE_CXX_FLAGS="-mcpu=cortex-a35+nocrypto -pthread -DMELEE_MIYOO_FLIP" \
   -DCMAKE_EXE_LINKER_FLAGS="-pthread -Wl,--allow-shlib-undefined" \
   -DSTRIKERS_FFMPEG=OFF \
   -DSTRIKERS_AURORA=ON \
