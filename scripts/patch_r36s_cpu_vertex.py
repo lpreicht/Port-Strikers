@@ -169,14 +169,7 @@ old = """  const auto label =
                   xxh3_hash(config.shaderConfig));
   return build_pipeline(config, {}, shader, label.c_str());
 """
-new = """#ifdef MELEE_MIYOO_FLIP
-  static bool loggedCpuVertex = false;
-  if (!loggedCpuVertex) {
-    Log.info("R36S GX pipeline cpuVertexDecode={}", config.shaderConfig.cpuVertexDecode);
-    loggedCpuVertex = true;
-  }
-#endif
-  const auto label =
+new = """  const auto label =
       fmt::format("GX Pipeline {:x} shader {:x}", xxh3_hash(config, static_cast<HashType>(gfx::ShaderType::GX)),
                   xxh3_hash(config.shaderConfig));
   if (config.shaderConfig.cpuVertexDecode) {
