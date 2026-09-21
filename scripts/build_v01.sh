@@ -132,19 +132,14 @@ if ! cmake -S "$STRIKERS" -B "$BUILD" -G Ninja \
   exit 30
 fi
 
-# Compile every translation unit first, without requiring the executable to link.
-cmake --build "$BUILD" --target strikers_scan --parallel "${BUILD_JOBS:-4}"
-
-# The checked-in stubs were generated on Mach-O and therefore have leading underscores.
-# Regenerate them from the AArch64 ELF objects exactly as Strikers upstream rebuild.sh does.
+# Use Strikers upstream build order exactly: compile everything (including Aurora), allow the
+# first executable link to fail, inspect the actually linked libraries, generate only the real
+# missing host stubs, then relink. Building only strikers_scan made Aurora look absent and
+# incorrectly produced ~187 GX/PAD/CARD/ImGui stubs.
 (
   cd "$STRIKERS"
-  STRIKERS_SYMBOL_PREFIX= STRIKERS_BUILD_DIR="$BUILD" python3 tools/genstubs.py \
-    --noop "^GX|^snd|^AI|^AR"
+  sh tools/rebuild.sh "$BUILD"
 )
-
-# stubs_generated.c changed, so Ninja recompiles it and performs the real final link.
-cmake --build "$BUILD" --target strikers --parallel "${BUILD_JOBS:-4}"
 
 # ArkOS compatibility gate.
 sh "$MELEE/native/tools/glibc230_toolchain.sh" verify "$PLAIN_SDK" "$BUILD/strikers"
