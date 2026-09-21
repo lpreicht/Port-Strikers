@@ -10,7 +10,6 @@ BUILD="$WORK/strikers-r36s"
 DIST="$ROOT/dist"
 
 STRIKERS_TAG="v1.2.0"
-AURORA_REV="f6275d6995cd4966cc993cc45a1530bafc2f297e"
 
 mkdir -p "$WORK" "$DIST"
 
@@ -21,22 +20,11 @@ if [ ! -d "$MELEE/.git" ]; then
   git clone --depth 1 --branch portmaster https://github.com/zalo/melee.git "$MELEE"
 fi
 
-# Rebase Strikers game-specific Aurora changes onto the current handheld Aurora fork
-# before spending time building Dawn/SDK. --3way uses shared Aurora history.
-rm -rf "$STRIKERS/extern/aurora"
-git clone https://github.com/zalo/aurora-arm.git "$STRIKERS/extern/aurora"
-git -C "$STRIKERS/extern/aurora" checkout --detach "$AURORA_REV"
-git -C "$STRIKERS/extern/aurora" config user.email "actions@users.noreply.github.com"
-git -C "$STRIKERS/extern/aurora" config user.name "R36S build"
-
-if ! git -C "$STRIKERS/extern/aurora" apply --3way "$STRIKERS/tools/aurora-local-changes.patch"; then
-  echo "::error::Automatic three-way Aurora rebase left conflicts."
-  echo "=== conflicted files ==="
-  git -C "$STRIKERS/extern/aurora" status --short || true
-  echo "=== conflict markers ==="
-  grep -RIn "^<<<<<<<\\|^=======\\|^>>>>>>>" "$STRIKERS/extern/aurora" --exclude-dir=.git || true
-  exit 20
-fi
+# Strikers 1.2.0 already contains its game-specific Aurora changes in extern/aurora.
+# Keep that tree intact. Replacing it with the Melee fork caused the V0.1 merge conflicts.
+test -f "$STRIKERS/extern/aurora/include/aurora/aurora.h"
+grep -q "aurora_capture_frame" "$STRIKERS/extern/aurora/include/aurora/aurora.h"
+grep -q "AURORA_LINUX_EGL_PROC" "$STRIKERS/extern/aurora/lib/webgpu/gpu.cpp"
 
 export RUSTUP_HOME="$TOOLS/rustup"
 export CARGO_HOME="$TOOLS/cargo"
@@ -47,7 +35,7 @@ if [ ! -x "$CARGO_HOME/bin/rustup" ]; then
 fi
 "$CARGO_HOME/bin/rustup" target add aarch64-unknown-linux-gnu
 
-# Reuse the exact PortMaster toolchain/Dawn preparation that already works for native Melee.
+# Build the same Cortex-A35 Dawn/toolchain stack used by the working native Melee port.
 python3 "$MELEE/native/tools/prepare_flip.py" --no-device --cpu a35
 
 PLAIN_SDK="$TOOLS/aarch64--glibc--stable-2023.08-1"
@@ -58,7 +46,7 @@ SDL3="$TOOLS/sdl3-shim-install"
 sh "$MELEE/native/tools/glibc230_toolchain.sh" build "$PLAIN_SDK" "$HYBRID_SDK"
 export FLIP_TOOLCHAIN="$HYBRID_SDK"
 
-# SDL3 API over the CFW SDL2 implementation.
+# Link SDL3 API calls to the CFW-owned SDL2 implementation, exactly as the Melee PortMaster build does.
 sh "$MELEE/native/tools/build_sdl3_shim.sh" "$SDL3"
 export FLIP_SDL3_ROOT="$SDL3"
 export FLIP_DAWN_PREFIX="$DAWN"
@@ -87,6 +75,7 @@ cmake -S "$STRIKERS" -B "$BUILD" -G Ninja \
 
 cmake --build "$BUILD" --target strikers --parallel "${BUILD_JOBS:-4}"
 
+# ArkOS compatibility gate.
 sh "$MELEE/native/tools/glibc230_toolchain.sh" verify "$PLAIN_SDK" "$BUILD/strikers"
 
 rm -rf "$DIST/stage"
