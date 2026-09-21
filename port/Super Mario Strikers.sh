@@ -35,15 +35,21 @@ export XDG_STATE_HOME="$GAMEDIR/runtime/state"
 export XDG_CACHE_HOME="$GAMEDIR/runtime/cache"
 mkdir -p "$XDG_CONFIG_HOME" "$XDG_STATE_HOME" "$XDG_CACHE_HOME"
 
-# CPU-vertex builds must not reuse Dawn pipeline data produced by the old
-# storage-buffer vertex path. Reset only the Dawn cache once; keep CARD saves.
-CACHE_RESET_MARKER="$GAMEDIR/runtime/.cpu_vertex_cache_reset_v1"
+# Keep the handheld shader/pipeline caches isolated from older desktop/storage-buffer builds.
+# Aurora stores serialized GX PipelineConfig records here as well as Dawn's driver cache.
+export STRIKERS_CACHE_DIR="$GAMEDIR/runtime/cache/cpu-vertex-v2"
+mkdir -p "$STRIKERS_CACHE_DIR"
+
+# One-time cleanup of the old default SDL_GetPrefPath caches. CARD saves live separately
+# under userPath and are intentionally untouched.
+CACHE_RESET_MARKER="$GAMEDIR/runtime/.cpu_vertex_cache_reset_v2"
 if [ ! -f "$CACHE_RESET_MARKER" ]; then
-  rm -f "$HOME/.local/share/Super Mario Strikers/dawn_cache.db" \
-        "$HOME/.local/share/Super Mario Strikers/dawn_cache.db-shm" \
-        "$HOME/.local/share/Super Mario Strikers/dawn_cache.db-wal"
+  for cache_base in "$HOME/.local/share/Super Mario Strikers" "$STRIKERS_CACHE_DIR"; do
+    rm -f "$cache_base/dawn_cache.db" "$cache_base/dawn_cache.db-shm" "$cache_base/dawn_cache.db-wal" \
+          "$cache_base/pipeline_cache.db" "$cache_base/pipeline_cache.db-shm" "$cache_base/pipeline_cache.db-wal"
+  done
   touch "$CACHE_RESET_MARKER"
-  echo "[launcher] reset old Dawn cache for CPU vertex decode"
+  echo "[launcher] reset old Dawn + Aurora pipeline caches for CPU vertex decode"
 fi
 
 if [ ${#sdl_controllerconfig} -lt 100000 ]; then
