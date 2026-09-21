@@ -61,6 +61,21 @@ new = '''        PortAuroraConfigure(&cfg);
         cfg.vsync = false;
         cfg.allowJoystickBackgroundEvents = true;
         cfg.cpuVertexDecode = true;
+        cfg.residentDisplayLists = true;
+        cfg.residentGeometryBudget = 64u * 1024u * 1024u;
+        cfg.asyncFrames = true;
+        cfg.textureVerifyInterval = 4;
+        cfg.textureAtlas = true;
+        cfg.disableRenderPassFusion = false;
+        cfg.uniformTable = true;
+        cfg.batchDraws = true;
+        cfg.glesDirectSubmission = 1;
+        cfg.glesMappedStreams = 1;
+        cfg.sortOpaqueDraws = false;
+        cfg.renderStats = false;
+        cfg.sceneOnSurface = true;
+        cfg.halfResolutionSpritePoints = 4000;
+        cfg.smallCopyPassInterval = 2;
         MeleeFlipInitDisplay();
         {
             unsigned displayW = 640, displayH = 480;
@@ -91,94 +106,104 @@ launch.write_text(s)
 # 4) Aurora reuses the SDL window created by the application display bridge.
 window = root / "extern/aurora/lib/window.cpp"
 s = window.read_text()
-decl = '''#ifdef MELEE_MIYOO_FLIP
-extern "C" SDL_Window* MeleeFlipSdlWindow();
-#endif
+# Fast Aurora already carries this platform support.
+if "MeleeFlipSdlWindow" in s and "g_windowExternal" in s:
+    pass
+else:
+    decl = '''#ifdef MELEE_MIYOO_FLIP
+    extern "C" SDL_Window* MeleeFlipSdlWindow();
+    #endif
 
-'''
-marker = '#include "rmlui.hpp"\n'
-if decl not in s:
-    if marker not in s:
-        raise SystemExit("window.cpp: include marker not found")
-    s = s.replace(marker, decl + marker, 1)
-if "bool g_windowExternal = false;" not in s:
-    s = s.replace("SDL_Window* g_window;\n", "SDL_Window* g_window;\nbool g_windowExternal = false;\n", 1)
+    '''
+    marker = '#include "rmlui.hpp"\n'
+    if decl not in s:
+        if marker not in s:
+            raise SystemExit("window.cpp: include marker not found")
+        s = s.replace(marker, decl + marker, 1)
+    if "bool g_windowExternal = false;" not in s:
+        s = s.replace("SDL_Window* g_window;\n", "SDL_Window* g_window;\nbool g_windowExternal = false;\n", 1)
 
-old = "bool create_window(AuroraBackend backend) {\n"
-new = '''bool create_window(AuroraBackend backend) {
-#ifdef MELEE_MIYOO_FLIP
-  if (SDL_Window* external = MeleeFlipSdlWindow(); external != nullptr) {
-    g_window = external;
-    g_windowExternal = true;
-    return true;
-  }
-#endif
-'''
-if new not in s:
-    if old not in s:
-        raise SystemExit("window.cpp: create_window marker not found")
-    s = s.replace(old, new, 1)
+    old = "bool create_window(AuroraBackend backend) {\n"
+    new = '''bool create_window(AuroraBackend backend) {
+    #ifdef MELEE_MIYOO_FLIP
+      if (SDL_Window* external = MeleeFlipSdlWindow(); external != nullptr) {
+        g_window = external;
+        g_windowExternal = true;
+        return true;
+      }
+    #endif
+    '''
+    if new not in s:
+        if old not in s:
+            raise SystemExit("window.cpp: create_window marker not found")
+        s = s.replace(old, new, 1)
 
-old = '''  if (g_window != nullptr) {
-    SDL_DestroyWindow(g_window);
-    g_window = nullptr;
-  }
-'''
-new = '''  if (g_window != nullptr) {
-    if (!g_windowExternal) {
-      SDL_DestroyWindow(g_window);
-    }
-    g_window = nullptr;
-    g_windowExternal = false;
-  }
-'''
-if new not in s:
-    if old not in s:
-        raise SystemExit("window.cpp: destroy_window marker not found")
-    s = s.replace(old, new, 1)
-window.write_text(s)
+    old = '''  if (g_window != nullptr) {
+        SDL_DestroyWindow(g_window);
+        g_window = nullptr;
+      }
+    '''
+    new = '''  if (g_window != nullptr) {
+        if (!g_windowExternal) {
+          SDL_DestroyWindow(g_window);
+        }
+        g_window = nullptr;
+        g_windowExternal = false;
+      }
+    '''
+    if new not in s:
+        if old not in s:
+            raise SystemExit("window.cpp: destroy_window marker not found")
+        s = s.replace(old, new, 1)
+    window.write_text(s)
 
 # 5) Dawn EGL-native-window surface; null native window becomes a pbuffer in the patched Dawn.
 backend = root / "extern/aurora/lib/dawn/BackendBinding.cpp"
 s = backend.read_text()
-decl = '''#ifdef MELEE_MIYOO_FLIP
-extern "C" void* MeleeFlipNativeWindow();
-#endif
+if "SurfaceSourceEGLNativeWindow" in s and "MeleeFlipNativeWindow" in s:
+    pass
+else:
+    decl = '''#ifdef MELEE_MIYOO_FLIP
+    extern "C" void* MeleeFlipNativeWindow();
+    #endif
 
-'''
-if decl not in s:
-    s = s.replace('#include "BackendBinding.hpp"\n', '#include "BackendBinding.hpp"\n' + decl, 1)
-old = '''#else
-  const auto props = SDL_GetWindowProperties(window);
-'''
-new = '''#else
-#ifdef MELEE_MIYOO_FLIP
-  auto desc = std::make_shared<wgpu::SurfaceSourceEGLNativeWindow>();
-  desc->window = MeleeFlipNativeWindow();
-  return desc;
-#endif
-  const auto props = SDL_GetWindowProperties(window);
-'''
-if new not in s:
-    if old not in s:
-        raise SystemExit("BackendBinding.cpp: platform marker not found")
-    s = s.replace(old, new, 1)
-backend.write_text(s)
+    '''
+    if decl not in s:
+        s = s.replace('#include "BackendBinding.hpp"\n', '#include "BackendBinding.hpp"\n' + decl, 1)
+    old = '''#else
+      const auto props = SDL_GetWindowProperties(window);
+    '''
+    new = '''#else
+    #ifdef MELEE_MIYOO_FLIP
+      auto desc = std::make_shared<wgpu::SurfaceSourceEGLNativeWindow>();
+      desc->window = MeleeFlipNativeWindow();
+      return desc;
+    #endif
+      const auto props = SDL_GetWindowProperties(window);
+    '''
+    if new not in s:
+        if old not in s:
+            raise SystemExit("BackendBinding.cpp: platform marker not found")
+        s = s.replace(old, new, 1)
+    backend.write_text(s)
 
 # 6) Dawn's GLES adapter must use the application's live EGL display and loader.
+# The fast Aurora fork already carries the MELEE_MIYOO_FLIP implementation; keep
+# the legacy transformation only for the older Strikers-bundled Aurora.
 gpu = root / "extern/aurora/lib/webgpu/gpu.cpp"
 s = gpu.read_text()
-decl = '''#ifdef MELEE_MIYOO_FLIP
+if "MeleeFlipEGLProc" not in s or "RequestAdapterOptionsGetGLProc glOptions" not in s:
+    decl = '''#ifdef MELEE_MIYOO_FLIP
 #include <dawn/native/OpenGLBackend.h>
 extern "C" void* MeleeFlipEGLDisplay();
 extern "C" dawn::native::opengl::EGLFunctionPointerType MeleeFlipEGLProc(const char*);
 #endif
 
 '''
-if decl not in s:
-    s = s.replace('#include "gpu.hpp"\n\n', '#include "gpu.hpp"\n\n' + decl, 1)
+    if decl not in s:
+        s = s.replace('#include "gpu.hpp"\n\n', '#include "gpu.hpp"\n\n' + decl, 1)
 
-old = '''#ifdef AURORA_LINUX_EGL_PROC
+    old = '''#ifdef AURORA_LINUX_EGL_PROC
     /* smstrikers-port: Dawn opens "libEGL.so", which only EGL's development package installs; hand it libEGL.so.1's eglGetProcAddress instead. */
     dawn::native::opengl::RequestAdapterOptionsGetGLProc glProc;
     if (backend == wgpu::BackendType::OpenGL || backend == wgpu::BackendType::OpenGLES) {
@@ -194,7 +219,7 @@ old = '''#ifdef AURORA_LINUX_EGL_PROC
     }
 #endif
 '''
-new = '''#ifdef MELEE_MIYOO_FLIP
+    new = '''#ifdef MELEE_MIYOO_FLIP
     dawn::native::opengl::RequestAdapterOptionsGetGLProc glProc;
     if (backend == wgpu::BackendType::OpenGL || backend == wgpu::BackendType::OpenGLES) {
       glProc.getProc = MeleeFlipEGLProc;
@@ -217,11 +242,11 @@ new = '''#ifdef MELEE_MIYOO_FLIP
     }
 #endif
 '''
-if new not in s:
-    if old not in s:
-        raise SystemExit("gpu.cpp: EGL proc block not found")
-    s = s.replace(old, new, 1)
-gpu.write_text(s)
+    if new not in s:
+        if old not in s:
+            raise SystemExit("gpu.cpp: EGL proc block not found")
+        s = s.replace(old, new, 1)
+    gpu.write_text(s)
 
 # 7) The Melee bridge normally inherits C++20 and several transitive standard
 # headers from Melee's own target. Strikers' main target is C++11, so make the
