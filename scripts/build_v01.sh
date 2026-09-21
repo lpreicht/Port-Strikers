@@ -40,10 +40,11 @@ fi
 # Direct-GLES branch. This gives git the correct three-way ancestry instead of trying
 # to apply an old index-based patch to a different tree.
 FAST_AURORA="$WORK/aurora-fast"
-if [ ! -d "$FAST_AURORA/.git" ]; then
-  git clone --filter=blob:none https://github.com/zalo/aurora-arm.git "$FAST_AURORA"
-fi
-git -C "$FAST_AURORA" fetch origin "$FAST_AURORA_REV" --depth 100
+# Use a complete clone here. A partial/promisor clone can fail during the
+# three-way merge when Git needs an old blob that GitHub no longer advertises
+# as an individually fetchable object.
+rm -rf "$FAST_AURORA"
+git clone --branch gles-direct-submission --single-branch https://github.com/zalo/aurora-arm.git "$FAST_AURORA"
 git -C "$FAST_AURORA" checkout -f "$AURORA_BASE_REV"
 git -C "$FAST_AURORA" clean -fdx
 
