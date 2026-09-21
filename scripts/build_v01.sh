@@ -132,6 +132,24 @@ if ! cmake -S "$STRIKERS" -B "$BUILD" -G Ninja \
   exit 30
 fi
 
+# genstubs.py only scans static archives under the Strikers build tree. Our Dawn is an
+# imported system archive outside that tree, so expose it there as a provider without copying it.
+DAWN_ARCHIVE="$(find "$DAWN" -type f -name 'libwebgpu_dawn.a' -print -quit)"
+if [ -z "$DAWN_ARCHIVE" ]; then
+  echo "::error::libwebgpu_dawn.a not found under $DAWN"
+  exit 41
+fi
+mkdir -p "$BUILD/external-providers"
+ln -sf "$DAWN_ARCHIVE" "$BUILD/external-providers/libwebgpu_dawn.a"
+
+# Safety check: these are real Dawn constructors, never acceptable as generated no-op stubs.
+NM_TOOL="$(command -v llvm-nm || command -v nm)"
+for sym in _ZN4dawn6native22DawnInstanceDescriptorC1Ev _ZN4dawn6native6opengl30RequestAdapterOptionsGetGLProcC1Ev; do
+  if ! "$NM_TOOL" --defined-only "$DAWN_ARCHIVE" 2>/dev/null | grep -Fq "$sym"; then
+    echo "::error::Expected Dawn symbol missing from $DAWN_ARCHIVE: $sym"
+    exit 42
+  fi
+done
 # Use Strikers upstream build order exactly: compile everything (including Aurora), allow the
 # first executable link to fail, inspect the actually linked libraries, generate only the real
 # missing host stubs, then relink. Building only strikers_scan made Aurora look absent and
