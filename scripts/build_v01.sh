@@ -56,22 +56,22 @@ if [ "${PREP_ONLY:-0}" = "1" ]; then
   exit 0
 fi
 
-# Dawn's imported target references Threads::Threads. Strikers does not create
-# that imported target early enough when cross-compiling, so inject it before generate.
-python3 - "$STRIKERS/CMakeLists.txt" <<'PY'
+# Dawn's exported CMake target references Threads::Threads. Aurora's system provider
+# currently imports Dawn before it calls find_package(Threads), which is too late for
+# CMake to validate DawnTargets.cmake. Load Threads immediately before Dawn.
+python3 - "$STRIKERS/extern/aurora/cmake/AuroraDawnProvider.cmake" <<'PY'
 from pathlib import Path
 import sys
 p = Path(sys.argv[1])
 s = p.read_text()
-needle = "if(STRIKERS_AURORA)\n"
-insert = "if(STRIKERS_AURORA)\n    set(THREADS_PREFER_PTHREAD_FLAG ON)\n    find_package(Threads REQUIRED)\n"
-if "find_package(Threads REQUIRED)" not in s:
+needle = "    set(CMAKE_FIND_PACKAGE_TARGETS_GLOBAL ON)\n    find_package(Dawn REQUIRED)\n"
+repl = "    set(CMAKE_FIND_PACKAGE_TARGETS_GLOBAL ON)\n    find_package(Threads REQUIRED)\n    find_package(Dawn REQUIRED)\n"
+if repl not in s:
     if needle not in s:
-        raise SystemExit("could not locate STRIKERS_AURORA block")
-    s = s.replace(needle, insert, 1)
+        raise SystemExit("could not locate system Dawn import")
+    s = s.replace(needle, repl, 1)
     p.write_text(s)
 PY
-
 TOOLCHAIN="$MELEE/native/platform/flip/toolchain-a35.cmake"
 
 rm -rf "$BUILD"
