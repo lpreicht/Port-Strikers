@@ -650,37 +650,20 @@ if new not in s:
     s = s.replace(old, new, 1)
 frame.write_text(s)
 
-# Handheld memory budget from Melee's working platform patch.
+# Handheld memory budget. Keep Strikers' measured storage/texture pools: its own
+# comments document peaks of 8.10 MiB storage and 19.45 MiB texture upload.
+# CPU-decoded float records need the larger 12 MiB vertex pool from the Melee path.
 resources = aur / "lib/gfx/resources.hpp"
 s = resources.read_text()
-old = """inline constexpr bool UseTextureBuffer = true;
-inline constexpr uint64_t UniformBufferSize = 25165824; // 24 MiB
-inline constexpr uint64_t VertexBufferSize = 5242880;   // 5 MiB
-inline constexpr uint64_t IndexBufferSize = 2097152;    // 2 MiB
-inline constexpr uint64_t StorageBufferSize = 8388608;  // 8 MiB
-inline constexpr uint64_t TextureUploadSize = 25165824; // 24 MiB
-"""
-new = """inline constexpr bool UseTextureBuffer = true;
-#ifdef MELEE_MIYOO_FLIP
-inline constexpr uint64_t UniformBufferSize = 8 * 1024 * 1024;
-inline constexpr uint64_t VertexBufferSize = 12 * 1024 * 1024;
-inline constexpr uint64_t IndexBufferSize = 2 * 1024 * 1024;
-inline constexpr uint64_t StorageBufferSize = 4 * 1024 * 1024;
-inline constexpr uint64_t TextureUploadSize = 12 * 1024 * 1024;
-#else
-inline constexpr uint64_t UniformBufferSize = 25165824; // 24 MiB
-inline constexpr uint64_t VertexBufferSize = 5242880;   // 5 MiB
-inline constexpr uint64_t IndexBufferSize = 2097152;    // 2 MiB
-inline constexpr uint64_t StorageBufferSize = 8388608;  // 8 MiB
-inline constexpr uint64_t TextureUploadSize = 25165824; // 24 MiB
-#endif
-"""
+old = "inline constexpr uint64_t VertexBufferSize = 5242880;    // 5 MiB"
+new = "inline constexpr uint64_t VertexBufferSize = 12 * 1024 * 1024; // 12 MiB, CPU-decoded vertices"
 if new not in s:
     if old not in s:
-        raise SystemExit("resources memory pool block not found")
+        raise SystemExit("resources VertexBufferSize line not found")
     s = s.replace(old, new, 1)
 resources.write_text(s)
 
+# Three staging maps instead of five, matching the low-memory handheld path.
 frame_h = aur / "lib/gfx/frame.hpp"
 s = frame_h.read_text()
 old = """inline constexpr size_t FrameSlotCount = 2;
@@ -698,43 +681,5 @@ if new not in s:
         raise SystemExit("frame staging buffer count not found")
     s = s.replace(old, new, 1)
 frame_h.write_text(s)
-
-# Dawn compatibility-mode limits for Mali: the proprietary GLES driver exposes
-# zero vertex-stage storage blocks. CPU vertex decode makes that valid.
-gpu = aur / "lib/webgpu/gpu.cpp"
-s = gpu.read_text()
-old = """    wgpu::CompatibilityModeLimits compatibilityModeLimits{wgpu::CompatibilityModeLimits::Init{
-        .maxStorageBuffersInVertexStage = 2,
-        .maxStorageBuffersInFragmentStage = 2,
-    }};
-"""
-new = """    wgpu::CompatibilityModeLimits compatibilityModeLimits{wgpu::CompatibilityModeLimits::Init{
-#ifdef MELEE_MIYOO_FLIP
-        .maxStorageBuffersInVertexStage = 0,
-#else
-        .maxStorageBuffersInVertexStage = 2,
-#endif
-        .maxStorageBuffersInFragmentStage = 2,
-    }};
-"""
-if new not in s:
-    if old not in s:
-        raise SystemExit("gpu compatibility storage limit block not found")
-    s = s.replace(old, new, 1)
-
-old = """        .maxStorageBuffersPerShaderStage = 2,
-        .minUniformBufferOffsetAlignment =
-"""
-new = """        .maxStorageBuffersPerShaderStage = 2,
-#ifdef MELEE_MIYOO_FLIP
-        .maxUniformBufferBindingSize = supportedLimits.maxUniformBufferBindingSize,
-#endif
-        .minUniformBufferOffsetAlignment =
-"""
-if new not in s:
-    if old not in s:
-        raise SystemExit("gpu uniform binding limit insertion not found")
-    s = s.replace(old, new, 1)
-gpu.write_text(s)
 
 print("Applied Aurora CPU vertex decode for R36S Mali GLES")
