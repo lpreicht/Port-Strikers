@@ -52,7 +52,7 @@ jobs:
           key: strikers-r36s-a35-glibc230-dawn-v1
 
       - name: Build PortMaster package
-        run: bash scripts/build_v01.sh
+        run: SKIP_PREP=1 bash scripts/build_v01.sh
 
       - name: Upload V0.1 package
         uses: actions/upload-artifact@v4
