@@ -35,19 +35,24 @@ if [ ! -x "$CARGO_HOME/bin/rustup" ]; then
 fi
 "$CARGO_HOME/bin/rustup" target add aarch64-unknown-linux-gnu
 
-# Build the same Cortex-A35 Dawn/toolchain stack used by the working native Melee port.
-python3 "$MELEE/native/tools/prepare_flip.py" --no-device --cpu a35
-
 PLAIN_SDK="$TOOLS/aarch64--glibc--stable-2023.08-1"
 HYBRID_SDK="$TOOLS/aarch64--glibc-2.30-hybrid"
 DAWN="$TOOLS/dawn-install-a35"
 SDL3="$TOOLS/sdl3-shim-install"
 
-sh "$MELEE/native/tools/glibc230_toolchain.sh" build "$PLAIN_SDK" "$HYBRID_SDK"
-export FLIP_TOOLCHAIN="$HYBRID_SDK"
+# Build the same Cortex-A35 Dawn/toolchain stack used by the working native Melee port.
+# The workflow restores this from cache for normal compile attempts.
+if [ "${SKIP_PREP:-0}" != "1" ]; then
+  python3 "$MELEE/native/tools/prepare_flip.py" --no-device --cpu a35
+  sh "$MELEE/native/tools/glibc230_toolchain.sh" build "$PLAIN_SDK" "$HYBRID_SDK"
+  sh "$MELEE/native/tools/build_sdl3_shim.sh" "$SDL3"
+else
+  test -x "$HYBRID_SDK/bin/aarch64-linux-gcc"
+  test -f "$DAWN/lib/cmake/Dawn/DawnConfig.cmake"
+  test -f "$SDL3/lib/libSDL3.so.0"
+fi
 
-# Link SDL3 API calls to the CFW-owned SDL2 implementation, exactly as the Melee PortMaster build does.
-sh "$MELEE/native/tools/build_sdl3_shim.sh" "$SDL3"
+export FLIP_TOOLCHAIN="$HYBRID_SDK"
 export FLIP_SDL3_ROOT="$SDL3"
 export FLIP_DAWN_PREFIX="$DAWN"
 
