@@ -17,7 +17,19 @@ if [ ! -d "$WORK/strikers/.git" ]; then
   git clone --depth 1 --branch "$STRIKERS_TAG" https://github.com/new-coke/strikers.git "$WORK/strikers"
 fi
 if [ ! -d "$MELEE/.git" ]; then
+  # actions/cache restores flip-tools inside build/melee before the Melee repo exists.
+  # Preserve that cache while replacing the placeholder directory with the real checkout.
+  SAVED_FLIP_TOOLS="$WORK/.saved-flip-tools"
+  rm -rf "$SAVED_FLIP_TOOLS"
+  if [ -d "$MELEE/build/flip-tools" ]; then
+    mv "$MELEE/build/flip-tools" "$SAVED_FLIP_TOOLS"
+  fi
+  rm -rf "$MELEE"
   git clone --depth 1 --branch portmaster https://github.com/zalo/melee.git "$MELEE"
+  if [ -d "$SAVED_FLIP_TOOLS" ]; then
+    mkdir -p "$MELEE/build"
+    mv "$SAVED_FLIP_TOOLS" "$MELEE/build/flip-tools"
+  fi
 fi
 
 # Strikers 1.2.0 already contains its game-specific Aurora changes in extern/aurora.
