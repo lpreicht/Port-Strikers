@@ -28,14 +28,24 @@ jobs:
             libegl-dev libgles-dev libglvnd-dev libdrm-dev libgbm-dev libasound2-dev libudev-dev \
             libwayland-bin ccache
 
-      - name: Cache handheld SDK and Dawn
-        uses: actions/cache@v4
+      - name: Restore handheld SDK and Dawn
+        id: toolchain-cache
+        uses: actions/cache/restore@v4
         with:
           path: |
             build/melee/build/flip-tools
-          key: strikers-r36s-v01-${{ runner.os }}-${{ hashFiles('scripts/build_v01.sh') }}
-          restore-keys: |
-            strikers-r36s-v01-
+          key: strikers-r36s-a35-glibc230-dawn-v1
+
+      - name: Prepare handheld toolchain
+        run: PREP_ONLY=1 bash scripts/build_v01.sh
+
+      - name: Save handheld SDK and Dawn
+        if: steps.toolchain-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            build/melee/build/flip-tools
+          key: strikers-r36s-a35-glibc230-dawn-v1
 
       - name: Build PortMaster package
         run: bash scripts/build_v01.sh
@@ -54,6 +64,7 @@ jobs:
           name: strikers-r36s-v0.1-build-tree
           path: |
             build/strikers-r36s/CMakeCache.txt
+            build/strikers-r36s/CMakeFiles/CMakeConfigureLog.yaml
             build/strikers-r36s/CMakeFiles/CMakeOutput.log
             build/strikers-r36s/CMakeFiles/CMakeError.log
           if-no-files-found: ignore
