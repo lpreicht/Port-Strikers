@@ -107,8 +107,8 @@ if repl not in s:
     p.write_text(s)
 PY
 
-# Add the R36S/ArkOS display bridge: external SDL window + Dawn EGL pbuffer +
-# shared-context GLES presentation, using the same platform code as Melee PortMaster.
+# Add the Mali-safe Aurora CPU vertex path first, then the R36S/ArkOS display bridge.
+python3 "$ROOT/scripts/patch_r36s_cpu_vertex.py" "$STRIKERS"
 python3 "$ROOT/scripts/patch_r36s_display.py" "$STRIKERS" "$MELEE"
 
 TOOLCHAIN="$MELEE/native/platform/flip/toolchain-a35.cmake"
