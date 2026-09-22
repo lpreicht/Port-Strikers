@@ -102,4 +102,83 @@ new = """    // A controller can arrive at any time, and its mapping is Aurora's
 """
 replace_once(inp, old, new, "R36S Start+Select in-process exit")
 
-print("Applied R36S rigid-cutscene + in-process Start+Select fixes")
+
+# ---------------------------------------------------------------------------
+# 3) Lightweight replay-end transition.
+#
+# On the R36S the two goal-replay camera angles themselves are smooth. The
+# hitch starts only at the end of the second angle, when Presentation begins
+# preparing the random ScreenTransition while the replay is still visible.
+# That stalls both rendering and the main-thread MusyX feeder. Do not preselect
+# the expensive transition on this handheld and turn only the completed replay
+# exit into an immediate cut. Normal gameplay/NIS wipes remain unchanged.
+# ---------------------------------------------------------------------------
+presentation = root / "src/Game/Render/Presentation.cpp"
+replace_once(
+    presentation,
+    """void Presentation::WaitForAutoReplayCompletion(const char* wipe)
+{
+    if (nlSingleton<ScreenTransitionManager>::Instance()->m_SelectedTransition == NULL)
+    {
+        nlSingleton<ScreenTransitionManager>::Instance()->SelectRandomTransition(wipe);
+    }
+    if (!ReplayChoreo::Instance().Done())
+    {
+        StopWithUndo();
+    }
+}
+""",
+    """void Presentation::WaitForAutoReplayCompletion(const char* wipe)
+{
+#ifdef MELEE_MIYOO_FLIP
+    // Preparing the random transition while the final replay angle is still
+    // running causes a long RK3326/Mali-G31 frame stall. Defer all transition
+    // work and use the cheap cut below once the choreography is actually done.
+    (void)wipe;
+#else
+    if (nlSingleton<ScreenTransitionManager>::Instance()->m_SelectedTransition == NULL)
+    {
+        nlSingleton<ScreenTransitionManager>::Instance()->SelectRandomTransition(wipe);
+    }
+#endif
+    if (!ReplayChoreo::Instance().Done())
+    {
+        StopWithUndo();
+    }
+}
+""",
+    "R36S replay completion transition deferral",
+)
+
+replace_once(
+    presentation,
+    """void Presentation::Wipe(const char* wipe)
+{
+    if (mByPassing)
+    {
+        return;
+    }
+    if (mUseInterruptWipe != NULL)
+""",
+    """void Presentation::Wipe(const char* wipe)
+{
+    if (mByPassing)
+    {
+        return;
+    }
+#ifdef MELEE_MIYOO_FLIP
+    // Only the completed auto-replay exit gets the lightweight transition.
+    // Camera cuts inside the replay and all non-replay presentation wipes keep
+    // their original behaviour.
+    if (nlTaskManager::m_pInstance->m_CurrState == 0x10 &&
+        ReplayChoreo::Instance().Done())
+    {
+        wipe = "cut";
+    }
+#endif
+    if (mUseInterruptWipe != NULL)
+""",
+    "R36S replay-end lightweight cut",
+)
+
+print("Applied R36S rigid-cutscene + clean exit + replay-end fixes")
