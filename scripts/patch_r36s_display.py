@@ -638,7 +638,7 @@ display_cpp.write_text(ds)
 
 present_cpp = melee / "native/platform/flip/present_worker.cpp"
 ps = present_cpp.read_text()
-decl_marker = 'extern "C" void* MeleeFlipPresentSurface(); // SDL\\'s window EGL surface (SDL path); the worker swaps it.\n'
+decl_marker = "extern \"C\" void* MeleeFlipPresentSurface(); // SDL's window EGL surface (SDL path); the worker swaps it.\n"
 decl_extra = decl_marker + '''extern "C" int MeleeFlipPresentConfigId();
 extern "C" void MeleeFlipPanelSize(unsigned* width, unsigned* height);
 '''
