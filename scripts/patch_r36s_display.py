@@ -697,4 +697,59 @@ if new_config not in ps:
     ps = ps.replace(old_config, new_config, 1)
 present_cpp.write_text(ps)
 
-print("Applied R36S SDL/KMSDRM + Dawn EGL/pbuffer display bridge")
+
+# 9) Restore Strikers' v1.2.0 64 KiB staging-copy alignment after the Fast-Aurora
+# merge. The upstream fix was added specifically for corrupted goal-wipe geometry
+# on older hardware; resolving renderer conflicts in favour of the handheld branch
+# otherwise reverts it to 4-byte copy boundaries.
+encoding = root / "extern/aurora/lib/gfx/encoding.cpp"
+es = encoding.read_text()
+old_align = "constexpr uint32_t align_down_copy_offset(uint32_t value) noexcept { return value & ~3u; }\n"
+new_align = """// R36S: retain Strikers' upstream old-hardware goal-transition fix.
+constexpr uint32_t StagingCopyAlign = 64 * 1024;
+constexpr uint32_t align_down_copy_offset(uint32_t value) noexcept {
+  return value & ~(StagingCopyAlign - 1);
+}
+"""
+if "constexpr uint32_t StagingCopyAlign = 64 * 1024;" not in es:
+    if old_align not in es:
+        raise SystemExit("encoding.cpp: staging alignment marker not found")
+    es = es.replace(old_align, new_align, 1)
+
+old_sig = """void copy_staging_buffer_range(wgpu::CommandEncoder& cmd, const FramePacket& frame, uint32_t& copied,
+                               uint32_t highWater, uint64_t stagingOffset, const wgpu::Buffer& dst) {
+"""
+new_sig = """void copy_staging_buffer_range(wgpu::CommandEncoder& cmd, const FramePacket& frame, uint32_t& copied,
+                               uint32_t highWater, uint64_t stagingOffset, uint64_t poolSize,
+                               const wgpu::Buffer& dst) {
+"""
+if new_sig not in es:
+    if old_sig not in es:
+        raise SystemExit("encoding.cpp: staging copy signature not found")
+    es = es.replace(old_sig, new_sig, 1)
+
+es = es.replace(
+    "  const uint32_t copyEnd = AURORA_ALIGN(highWater, 4);\n",
+    "  const uint32_t copyEnd = static_cast<uint32_t>(std::min<uint64_t>(\\n"
+    "      AURORA_ALIGN(uint64_t{highWater}, StagingCopyAlign), poolSize));\\n",
+    1,
+)
+
+call_repls = {
+    "copy_staging_buffer_range(cmd, frame, frame.copied.verts, highWater.verts, layout.vertex, res.vertexBuffer);":
+        "copy_staging_buffer_range(cmd, frame, frame.copied.verts, highWater.verts, layout.vertex, VertexBufferSize, res.vertexBuffer);",
+    "copy_staging_buffer_range(cmd, frame, frame.copied.uniforms, highWater.uniforms, layout.uniform, res.uniformBuffer);":
+        "copy_staging_buffer_range(cmd, frame, frame.copied.uniforms, highWater.uniforms, layout.uniform, UniformBufferSize, res.uniformBuffer);",
+    "copy_staging_buffer_range(cmd, frame, frame.copied.indices, highWater.indices, layout.index, res.indexBuffer);":
+        "copy_staging_buffer_range(cmd, frame, frame.copied.indices, highWater.indices, layout.index, IndexBufferSize, res.indexBuffer);",
+    "copy_staging_buffer_range(cmd, frame, frame.copied.storage, highWater.storage, layout.storage, res.storageBuffer);":
+        "copy_staging_buffer_range(cmd, frame, frame.copied.storage, highWater.storage, layout.storage, StorageBufferSize, res.storageBuffer);",
+}
+for old_call, new_call in call_repls.items():
+    if new_call not in es:
+        if old_call not in es:
+            raise SystemExit("encoding.cpp: staging copy call not found: " + old_call)
+        es = es.replace(old_call, new_call, 1)
+encoding.write_text(es)
+
+print("Applied R36S SDL/KMSDRM + Dawn EGL/pbuffer display bridge + 64KiB goal-transition alignment")
