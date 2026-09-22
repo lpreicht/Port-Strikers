@@ -336,12 +336,20 @@ extern "C" dawn::native::opengl::EGLFunctionPointerType MeleeFlipEGLProc(const c
 # FIFO/command processor no longer uses streamPos, so normalize the public declaration.
 command_h = root / "extern/aurora/lib/gx/command_processor.hpp"
 chs = command_h.read_text()
-chs = chs.replace(
-    "ProcessResult process(const uint8_t* data, uint32_t size, uint64_t streamPos = 0) noexcept;\n",
-    ""
-)
-if chs.count("ProcessResult process(const uint8_t* data, uint32_t size) noexcept;") != 1:
-    raise SystemExit("command_processor.hpp: expected exactly one fast process declaration")
+old_process = "ProcessResult process(const uint8_t* data, uint32_t size, uint64_t streamPos = 0) noexcept;\n"
+fast_process = "ProcessResult process(const uint8_t* data, uint32_t size) noexcept;\n"
+chs = chs.replace(old_process, "")
+if fast_process not in chs:
+    marker = "struct ProcessResult {\n  uint32_t bytesProcessed;\n  bool drawDone;\n};\n"
+    if marker not in chs:
+        raise SystemExit("command_processor.hpp: ProcessResult marker not found")
+    chs = chs.replace(marker, marker + "\n// Process GX FIFO commands until draw-done or end of buffer.\n" + fast_process, 1)
+# De-duplicate defensively if an auto-merge already supplied the fast declaration.
+first = chs.find(fast_process)
+second = chs.find(fast_process, first + len(fast_process)) if first >= 0 else -1
+while second >= 0:
+    chs = chs[:second] + chs[second + len(fast_process):]
+    second = chs.find(fast_process, first + len(fast_process))
 command_h.write_text(chs)
 
 # Strikers exposes atomic shader warmup counters through aurora_get_pipeline_counts().
