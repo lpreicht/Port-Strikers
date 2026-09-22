@@ -58,6 +58,13 @@ void aurora_gpu_frame_time(uint64_t* lastNs, uint64_t* meanNs, uint64_t* maxNs, 
   if (count) *count = 0;
 }
 
+bool aurora_present_waits_for_vblank() {
+  // The R36S presentation worker uses swap interval 0, but SDL/KMSDRM's page flip
+  // still paces scanout to the panel. Tell Strikers not to fight that with an
+  // additional exact display-rate limiter.
+  return true;
+}
+
 void aurora_set_frame_buffer_scale(float scale) {
   aurora::window::set_frame_buffer_scale(scale);
 }
