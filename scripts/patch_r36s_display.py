@@ -343,6 +343,104 @@ if "void get_pipeline_counts(uint32_t& queued, uint32_t& created);" not in phs:
     phs = phs.replace(old, new, 1)
     pipeline_h.write_text(phs)
 
+# Fast command_processor.cpp uses Aurora's shared ByteReader, while Strikers'
+# older internal.hpp predated that helper. Restore the current utility without
+# replacing Strikers' useful ByteBuffer diagnostics/extensions.
+internal_h = root / "extern/aurora/lib/internal.hpp"
+ihs = internal_h.read_text()
+if "class ByteReader" not in ihs:
+    insert = r'''
+class ByteReader {
+public:
+  explicit ByteReader(std::span<const uint8_t> data) noexcept : ByteReader{data.data(), data.size()} {}
+  ByteReader(const uint8_t* data, size_t size) noexcept : mData{data}, mSize{size} {}
+
+  static ByteReader unbounded(const void* data) noexcept {
+    return {static_cast<const uint8_t*>(data), std::numeric_limits<size_t>::max()};
+  }
+
+  [[nodiscard]] bool empty() const noexcept { return mPosition == mSize; }
+  [[nodiscard]] size_t offset() const noexcept { return mPosition; }
+  [[nodiscard]] size_t size() const noexcept { return mSize; }
+  [[nodiscard]] size_t remaining() const noexcept { return mSize - mPosition; }
+  [[nodiscard]] const uint8_t* data() const noexcept { return mData; }
+
+  template <typename T>
+    requires(std::is_arithmetic_v<T>)
+  T read() noexcept {
+    const auto bytes = take(sizeof(T));
+    return read_bits<T>(bytes.data());
+  }
+
+  template <typename T>
+    requires(std::is_arithmetic_v<T>)
+  bool try_read(T& value) noexcept {
+    std::span<const uint8_t> bytes;
+    if (!try_take(sizeof(T), bytes)) {
+      return false;
+    }
+    value = read_bits<T>(bytes.data());
+    return true;
+  }
+
+  std::span<const uint8_t> take(size_t count) noexcept {
+    AURORA_ASSERT(can_read(count), "Reader overrun: need {} bytes at offset {}, have {}", count, mPosition,
+                  remaining());
+    const std::span bytes{mData + mPosition, count};
+    mPosition += count;
+    return bytes;
+  }
+
+  bool try_take(size_t count, std::span<const uint8_t>& bytes) noexcept {
+    if (!can_read(count)) {
+      return false;
+    }
+    bytes = {mData + mPosition, count};
+    mPosition += count;
+    return true;
+  }
+
+  void skip(size_t count) noexcept {
+    AURORA_ASSERT(can_read(count), "Reader overrun: need {} bytes at offset {}, have {}", count, mPosition,
+                  remaining());
+    mPosition += count;
+  }
+
+  std::string read_string() noexcept {
+    const auto length = read<uint16_t>();
+    const auto bytes = take(length);
+    return {reinterpret_cast<const char*>(bytes.data()), bytes.size()};
+  }
+
+private:
+  static constexpr aurora::Module Log{"aurora::reader"};
+
+  [[nodiscard]] bool can_read(size_t count) const noexcept {
+    return mPosition <= mSize && count <= mSize - mPosition;
+  }
+
+  const uint8_t* mData;
+  size_t mSize;
+  size_t mPosition = 0;
+};
+'''
+    end = "} // namespace aurora\n"
+    if end not in ihs:
+        raise SystemExit("internal.hpp: aurora namespace end not found")
+    ihs = ihs.replace(end, insert + end, 1)
+    internal_h.write_text(ihs)
+
+# One stale Strikers texture-view line survives the automatic GX merge. Fast
+# Aurora's empty texture is a DynamicTexture and exposes sampleTextureView directly.
+gx_cpp = root / "extern/aurora/lib/gx/gx.cpp"
+gxs = gx_cpp.read_text()
+gxs = gxs.replace("  sEmptyTextureView = {};\n", "")
+gxs = gxs.replace("      textureEntry.textureView = sEmptyTextureView.Get();\n",
+                  "      textureEntry.textureView = sEmptyTexture->sampleTextureView.Get();\n")
+gxs = gxs.replace("          .textureView = sEmptyTextureView,\n",
+                  "          .textureView = sEmptyTexture->sampleTextureView,\n")
+gx_cpp.write_text(gxs)
+
 # 6b) Do not let pkg-config inject the GitHub runner's host sqlite into an
 # AArch64 cross build. Fast Aurora can build SQLite's amalgamation itself, which
 # gives us matching headers and a GLIBC-independent static object.
