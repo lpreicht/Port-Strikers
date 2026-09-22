@@ -159,6 +159,9 @@ replace_once(
         return;
     }
     if (mUseInterruptWipe != NULL)
+    {
+        wipe = mUseInterruptWipe;
+    }
 """,
     """void Presentation::Wipe(const char* wipe)
 {
@@ -166,17 +169,20 @@ replace_once(
     {
         return;
     }
+    if (mUseInterruptWipe != NULL)
+    {
+        wipe = mUseInterruptWipe;
+    }
 #ifdef MELEE_MIYOO_FLIP
     // Only the completed auto-replay exit gets the lightweight transition.
-    // Camera cuts inside the replay and all non-replay presentation wipes keep
-    // their original behaviour.
+    // Apply this after mUseInterruptWipe so a scripted transition cannot
+    // override the cheap R36S replay-exit cut.
     if (nlTaskManager::m_pInstance->m_CurrState == 0x10 &&
         ReplayChoreo::Instance().Done())
     {
         wipe = "cut";
     }
 #endif
-    if (mUseInterruptWipe != NULL)
 """,
     "R36S replay-end lightweight cut",
 )
