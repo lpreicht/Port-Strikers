@@ -167,6 +167,16 @@ pm_platform_helper "$GAMEDIR/strikers"
 ./strikers
 status=$?
 
+# Promote the learned writable Aurora pipeline DB to the read-only seed format
+# expected beside the game. On the next launch Strikers can compile those known
+# stadium/replay pipelines before gameplay instead of discovering them again in
+# the opening camera. This is especially useful after PortMaster updates.
+PIPE_DB="$GAMEDIR/runtime/cache/direct-gles-v1/pipeline_cache.db"
+PIPE_SEED="$GAMEDIR/initial_pipeline_cache.db"
+if [ -s "$PIPE_DB" ]; then
+  cp -f "$PIPE_DB" "$PIPE_SEED" 2>/dev/null || true
+fi
+
 # Do not leave the input helper around after the native process releases KMSDRM.
 if [ -n "${GPTK_PID:-}" ]; then
   kill "$GPTK_PID" >/dev/null 2>&1 || true
