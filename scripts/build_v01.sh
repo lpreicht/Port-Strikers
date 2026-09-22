@@ -105,6 +105,8 @@ export FLIP_TOOLCHAIN="$HYBRID_SDK"
 export FLIP_SDL3_ROOT="$SDL3"
 export FLIP_DAWN_PREFIX="$DAWN"
 
+python3 "$ROOT/scripts/patch_r36s_sdl_audio.py" "$MELEE"
+
 # Build the same Cortex-A35 Dawn/toolchain stack used by the working native Melee port.
 # The workflow restores this from cache for normal compile attempts.
 if [ "${SKIP_PREP:-0}" != "1" ]; then
@@ -114,6 +116,9 @@ if [ "${SKIP_PREP:-0}" != "1" ]; then
 else
   test -x "$HYBRID_SDK/bin/aarch64-linux-gcc"
   test -f "$DAWN/lib/cmake/Dawn/DawnConfig.cmake"
+  # The helper is cheap when its marker matches, and rebuilds only the SDL shim
+  # when our R36S queue layout changes while reusing the cached SDK/Dawn.
+  sh "$MELEE/native/tools/build_sdl3_shim.sh" "$SDL3"
   test -f "$SDL3/lib/libSDL3.so.0"
 fi
 
@@ -272,6 +277,6 @@ cp "$ROOT/port/port.json" "$DIST/stage/port.json"
 chmod +x "$DIST/stage/Super Mario Strikers.sh" "$DIST/stage/strikers/strikers.aarch64"
 (
   cd "$DIST/stage"
-  zip -r -9 "$DIST/strikers-r36s-v0.2.zip" .
+  zip -r -9 "$DIST/strikers-r36s-v0.3.zip" .
 )
-sha256sum "$DIST/strikers-r36s-v0.2.zip"
+sha256sum "$DIST/strikers-r36s-v0.3.zip"
