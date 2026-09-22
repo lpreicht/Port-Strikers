@@ -37,19 +37,19 @@ mkdir -p "$XDG_CONFIG_HOME" "$XDG_STATE_HOME" "$XDG_CACHE_HOME"
 
 # Keep the handheld shader/pipeline caches isolated from older desktop/storage-buffer builds.
 # Aurora stores serialized GX PipelineConfig records here as well as Dawn's driver cache.
-export STRIKERS_CACHE_DIR="$GAMEDIR/runtime/cache/cpu-vertex-v2"
+export STRIKERS_CACHE_DIR="$GAMEDIR/runtime/cache/direct-gles-v1"
 mkdir -p "$STRIKERS_CACHE_DIR"
 
 # One-time cleanup of the old default SDL_GetPrefPath caches. CARD saves live separately
 # under userPath and are intentionally untouched.
-CACHE_RESET_MARKER="$GAMEDIR/runtime/.cpu_vertex_cache_reset_v2"
+CACHE_RESET_MARKER="$GAMEDIR/runtime/.direct_gles_cache_reset_v1"
 if [ ! -f "$CACHE_RESET_MARKER" ]; then
   for cache_base in "$HOME/.local/share/Super Mario Strikers" "$STRIKERS_CACHE_DIR"; do
     rm -f "$cache_base/dawn_cache.db" "$cache_base/dawn_cache.db-shm" "$cache_base/dawn_cache.db-wal" \
           "$cache_base/pipeline_cache.db" "$cache_base/pipeline_cache.db-shm" "$cache_base/pipeline_cache.db-wal"
   done
   touch "$CACHE_RESET_MARKER"
-  echo "[launcher] reset old Dawn + Aurora pipeline caches for CPU vertex decode"
+  echo "[launcher] reset Dawn + Aurora pipeline caches for Direct GLES"
 fi
 
 if [ ${#sdl_controllerconfig} -lt 100000 ]; then
@@ -77,7 +77,11 @@ export SDL3SHIM_SDL2_AUDIODRIVER="$inner_audio"
 export SDL_VIDEODRIVER=sdl2
 export SDL_AUDIODRIVER=sdl2
 
-# R36S/ArkOS: make PortMaster\'s kill combo deterministic. gptokeyb defaults to\n# BACK/SELECT unless HOTKEY was inherited from device detection; force it here.\nexport HOTKEY=back\n\necho "[launcher] SDL3 shim -> SDL2 video=$SDL3SHIM_SDL2_VIDEODRIVER audio=$SDL3SHIM_SDL2_AUDIODRIVER"
+# R36S/ArkOS: make PortMaster's kill combo deterministic. gptokeyb defaults to
+# BACK/SELECT unless HOTKEY was inherited from device detection; force it here.
+export HOTKEY=back
+
+echo "[launcher] SDL3 shim -> SDL2 video=$SDL3SHIM_SDL2_VIDEODRIVER audio=$SDL3SHIM_SDL2_AUDIODRIVER"
 
 # Known-good ArkOS Mali-G31 driver on the user's R36S.
 MALI="/usr/local/lib/aarch64-linux-gnu/libmali-bifrost-g31-rxp0-gbm.so"
