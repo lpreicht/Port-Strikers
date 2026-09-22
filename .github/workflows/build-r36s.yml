@@ -76,4 +76,5 @@ jobs:
             build/strikers-r36s/CMakeFiles/CMakeConfigureLog.yaml
             build/strikers-r36s/CMakeFiles/CMakeOutput.log
             build/strikers-r36s/CMakeFiles/CMakeError.log
+            build/strikers-r36s/strikers-link-failure.log
           if-no-files-found: ignore
