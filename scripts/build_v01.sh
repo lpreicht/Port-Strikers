@@ -164,6 +164,7 @@ PY
 # Add only the application-side R36S SDL/KMSDRM display bridge and renderer config.
 python3 "$ROOT/scripts/patch_r36s_display.py" "$STRIKERS" "$MELEE"
 python3 "$ROOT/scripts/patch_r36s_audio_skin.py" "$STRIKERS"
+python3 "$ROOT/scripts/patch_r36s_replay_exit.py" "$STRIKERS"
 
 # Upstream rebuild.sh intentionally reduces final linker failures to lines containing
 # "error/undefined" and then deletes the temporary log. Some AArch64 linker failures
@@ -277,6 +278,6 @@ cp "$ROOT/port/port.json" "$DIST/stage/port.json"
 chmod +x "$DIST/stage/Super Mario Strikers.sh" "$DIST/stage/strikers/strikers"
 (
   cd "$DIST/stage"
-  zip -r -9 "$DIST/strikers-r36s-v0.4.zip" .
+  zip -r -9 "$DIST/strikers-r36s-v0.5.zip" .
 )
-sha256sum "$DIST/strikers-r36s-v0.4.zip"
+sha256sum "$DIST/strikers-r36s-v0.5.zip"
