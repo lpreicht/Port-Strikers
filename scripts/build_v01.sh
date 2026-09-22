@@ -265,7 +265,7 @@ sh "$MELEE/native/tools/glibc230_toolchain.sh" verify "$PLAIN_SDK" "$BUILD/strik
 
 rm -rf "$DIST/stage"
 mkdir -p "$DIST/stage/strikers/assets" "$DIST/stage/strikers/libs.aarch64" "$DIST/stage/strikers/runtime/config" "$DIST/stage/strikers/runtime/cache"
-cp "$BUILD/strikers" "$DIST/stage/strikers/strikers.aarch64"
+cp "$BUILD/strikers" "$DIST/stage/strikers/strikers"
 cp "$SDL3/lib/libSDL3.so.0" "$DIST/stage/strikers/libs.aarch64/libSDL3.so.0"
 cp "$ROOT/port/strikers.ini" "$DIST/stage/strikers/strikers.ini"
 cp "$ROOT/port/strikers.gptk.ini" "$DIST/stage/strikers/strikers.gptk.ini"
@@ -274,9 +274,9 @@ touch "$DIST/stage/strikers/assets/PUT_YOUR_USA_G4QE01_ISO_HERE"
 cp "$ROOT/port/Super Mario Strikers.sh" "$DIST/stage/Super Mario Strikers.sh"
 cp "$ROOT/port/port.json" "$DIST/stage/port.json"
 
-chmod +x "$DIST/stage/Super Mario Strikers.sh" "$DIST/stage/strikers/strikers.aarch64"
+chmod +x "$DIST/stage/Super Mario Strikers.sh" "$DIST/stage/strikers/strikers"
 (
   cd "$DIST/stage"
-  zip -r -9 "$DIST/strikers-r36s-v0.3.zip" .
+  zip -r -9 "$DIST/strikers-r36s-v0.4.zip" .
 )
-sha256sum "$DIST/strikers-r36s-v0.3.zip"
+sha256sum "$DIST/strikers-r36s-v0.4.zip"
