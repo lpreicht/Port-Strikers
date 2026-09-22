@@ -147,4 +147,37 @@ replace_once(
     "R36S linear audio interpolation end",
 )
 
-print("Applied R36S audio stability + skin morph fixes")
+
+# ---------------------------------------------------------------------------
+# 4) Honour log_audio=0.
+#
+# PortConfigLoad exports every INI key as STRIKERS_<KEY>. Upstream's audio
+# diagnostics historically treated any non-empty STRIKERS_LOG_AUDIO value as
+# enabled, so the perfectly normal value "0" enabled hundreds of unbuffered
+# writes instead of disabling them. On an SD-card handheld those writes can
+# pre-empt the SDL/ALSA feeder and cause exactly the short starvation seen in
+# match logs. Make all audio-side checks interpret "0" as false.
+# ---------------------------------------------------------------------------
+for rel in (
+    "src/platform/audio_out.cpp",
+    "src/platform/audio_mix.cpp",
+    "src/platform/musyx_data.cpp",
+    "src/platform/musyx_aram.c",
+    "src/platform/dvd.c",
+    "src/Game/Sys/debug.cpp",
+):
+    p = root / rel
+    text = p.read_text()
+    before = text
+    text = text.replace(
+        "(e != nullptr && *e != '\\0') ? 1 : 0;",
+        "(e != nullptr && *e != '\\0' && *e != '0') ? 1 : 0;",
+    )
+    text = text.replace(
+        "(e != NULL && *e != '\\0') ? 1 : 0;",
+        "(e != NULL && *e != '\\0' && *e != '0') ? 1 : 0;",
+    )
+    if text != before:
+        p.write_text(text)
+
+print("Applied R36S audio stability + skin morph + log_audio fixes")
