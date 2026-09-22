@@ -40,17 +40,11 @@ mkdir -p "$XDG_CONFIG_HOME" "$XDG_STATE_HOME" "$XDG_CACHE_HOME"
 export STRIKERS_CACHE_DIR="$GAMEDIR/runtime/cache/direct-gles-v1"
 mkdir -p "$STRIKERS_CACHE_DIR"
 
-# One-time cleanup of the old default SDL_GetPrefPath caches. CARD saves live separately
-# under userPath and are intentionally untouched.
-CACHE_RESET_MARKER="$GAMEDIR/runtime/.direct_gles_cache_reset_v1"
-if [ ! -f "$CACHE_RESET_MARKER" ]; then
-  for cache_base in "$HOME/.local/share/Super Mario Strikers" "$STRIKERS_CACHE_DIR"; do
-    rm -f "$cache_base/dawn_cache.db" "$cache_base/dawn_cache.db-shm" "$cache_base/dawn_cache.db-wal" \
-          "$cache_base/pipeline_cache.db" "$cache_base/pipeline_cache.db-shm" "$cache_base/pipeline_cache.db-wal"
-  done
-  touch "$CACHE_RESET_MARKER"
-  echo "[launcher] reset Dawn + Aurora pipeline caches for Direct GLES"
-fi
+# Keep the learned Dawn/Aurora caches across launches and port updates.
+# Pipeline config versions are part of the cache key, so incompatible records
+# are ignored without throwing away good stadium pipelines from previous runs.
+echo "[launcher] keeping Dawn + Aurora pipeline caches"
+
 
 if [ ${#sdl_controllerconfig} -lt 100000 ]; then
   export SDL_GAMECONTROLLERCONFIG="$sdl_controllerconfig"
@@ -157,15 +151,27 @@ fi
 export MELEE_FLIP_PRESENT_THREAD="${MELEE_FLIP_PRESENT_THREAD:-1}"
 export MELEE_FLIP_ASYNC_PRESENT="${MELEE_FLIP_ASYNC_PRESENT:-1}"
 
+# This exact Mali-G31/r13p0 path has now been validated across normal play and
+# goal replays. Skip Aurora's expensive diagnostic double-render probe unless
+# explicitly re-enabled for debugging.
+export AURORA_GLES_DRIVER_PROBE="${AURORA_GLES_DRIVER_PROBE:-0}"
+
 
 chmod +x "$GAMEDIR/strikers"
 # gptokeyb2 uses pkill on ArkOS; Linux comm names are limited to 15 chars, so
 # "strikers.aarch64" cannot be matched reliably. The executable comm begins "strikers".
 $GPTOKEYB2 "strikers" -c "$GAMEDIR/strikers.gptk.ini" &
+GPTK_PID=$!
 
 pm_platform_helper "$GAMEDIR/strikers"
 ./strikers
 status=$?
+
+# Do not leave the input helper around after the native process releases KMSDRM.
+if [ -n "${GPTK_PID:-}" ]; then
+  kill "$GPTK_PID" >/dev/null 2>&1 || true
+  wait "$GPTK_PID" 2>/dev/null || true
+fi
 
 echo "[launcher] strikers exit status: $status"
 pm_finish
