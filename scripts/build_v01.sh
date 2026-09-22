@@ -278,6 +278,6 @@ cp "$ROOT/port/port.json" "$DIST/stage/port.json"
 chmod +x "$DIST/stage/Super Mario Strikers.sh" "$DIST/stage/strikers/strikers"
 (
   cd "$DIST/stage"
-  zip -r -9 "$DIST/strikers-r36s-v0.6.zip" .
+  zip -r -9 "$DIST/strikers-r36s-v0.7.zip" .
 )
-sha256sum "$DIST/strikers-r36s-v0.6.zip"
+sha256sum "$DIST/strikers-r36s-v0.7.zip"
