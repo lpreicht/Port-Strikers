@@ -62,9 +62,16 @@ replace_once(begin, old, new, "R36S rigid character compatibility")
 #
 # gptokeyb2 sees both buttons on ArkOS, but its external pkill path does not
 # terminate this native process reliably. Read the physical SDL gamepad state
-# already owned by Aurora and exit from the game process itself.
+# already owned by Aurora and request the normal main-loop shutdown so Aurora,
+# SDL/KMSDRM and PortMaster all get their cleanup paths.
 # ---------------------------------------------------------------------------
 inp = root / "src/platform/input.cpp"
+replace_once(
+    inp,
+    '#include "port/input.h"\\n',
+    '#include "port/input.h"\\n#include "port/overlay.h"\\n',
+    "R36S graceful quit include",
+)
 old = """    // A controller can arrive at any time, and its mapping is Aurora's until the file's is put over
     // it.
     poll_controllers(probe_pad());
@@ -87,8 +94,9 @@ new = """    // A controller can arrive at any time, and its mapping is Aurora's
             SDL_GetGamepadButton(pad, SDL_GAMEPAD_BUTTON_BACK) &&
             SDL_GetGamepadButton(pad, SDL_GAMEPAD_BUTTON_START))
         {
-            OSReport("[port] Start+Select pressed: exiting\\n");
-            std::exit(0);
+            OSReport("[port] Start+Select pressed: requesting clean exit\\n");
+            PortRequestQuit();
+            return;
         }
     }
 #endif
