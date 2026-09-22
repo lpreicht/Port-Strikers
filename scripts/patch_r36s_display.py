@@ -86,14 +86,21 @@ void aurora_gfx_pool_stats(uint32_t* peakBytes, uint32_t* reservedBytes, size_t 
   }
 }
 
-void aurora_gfx_texture_stats(uint64_t* srcBytes, uint64_t* uploadedBytes, uint64_t* count) {
-  if (srcBytes) *srcBytes = 0;
-  if (uploadedBytes) *uploadedBytes = 0;
-  if (count) *count = 0;
-}
-
 } // extern "C"
 ''')
+
+# Fast Aurora implements GXWaitDrawDone in GXManage.cpp. Strikers' older platform
+# compatibility wrapper aliases it to GXDrawDone and would collide at final link.
+aurora_compat_c = root / "src/platform/aurora_compat.c"
+acs = aurora_compat_c.read_text()
+acs = acs.replace(
+    "void GXWaitDrawDone(void)\n"
+    "{\n"
+    "    GXDrawDone();\n"
+    "}\n\n",
+    ""
+)
+aurora_compat_c.write_text(acs)
 
 # 1) Link Melee's proven SDL/KMSDRM + EGL pbuffer/present bridge into Strikers.
 cmake = root / "CMakeLists.txt"
@@ -108,8 +115,7 @@ find_library(STRIKERS_R36S_EGL EGL REQUIRED)
 find_library(STRIKERS_R36S_GLES GLESv2 REQUIRED)
 target_sources(strikers PRIVATE
     "{melee.as_posix()}/native/platform/flip/display.cpp"
-    "{melee.as_posix()}/native/platform/flip/present_worker.cpp"
-    "{(root / "src/platform/r36s_aurora_compat.cpp").as_posix()}")
+    "{melee.as_posix()}/native/platform/flip/present_worker.cpp")
 set_source_files_properties(
     "{melee.as_posix()}/native/platform/flip/display.cpp"
     "{melee.as_posix()}/native/platform/flip/present_worker.cpp"
