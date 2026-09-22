@@ -156,7 +156,9 @@ export MELEE_FLIP_PRESENT_THREAD="${MELEE_FLIP_PRESENT_THREAD:-1}"
 export MELEE_FLIP_ASYNC_PRESENT="${MELEE_FLIP_ASYNC_PRESENT:-1}"
 
 chmod +x "$GAMEDIR/strikers.aarch64"
-$GPTOKEYB2 "strikers.aarch64" -c "$GAMEDIR/strikers.gptk.ini" &
+# gptokeyb2 uses pkill on ArkOS; Linux comm names are limited to 15 chars, so
+# "strikers.aarch64" cannot be matched reliably. The executable comm begins "strikers".
+$GPTOKEYB2 "strikers" -c "$GAMEDIR/strikers.gptk.ini" &
 
 pm_platform_helper "$GAMEDIR/strikers.aarch64"
 ./strikers.aarch64
