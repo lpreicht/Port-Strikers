@@ -12,6 +12,12 @@ melee = Path(sys.argv[2])
 # Strikers-facing ABI surface that the game sources require on the handheld.
 aurora_h = root / "extern/aurora/include/aurora/aurora.h"
 hs = aurora_h.read_text()
+if "uint32_t pipelineJobs;" not in hs:
+    marker = "  uint32_t msaa;\n"
+    if marker not in hs:
+        raise SystemExit("aurora.h: msaa marker not found")
+    hs = hs.replace(marker, marker + "  uint32_t pipelineJobs; /* Strikers shader compilation worker limit; 0 = automatic */\n", 1)
+
 if "bool startMaximized;" not in hs:
     marker = "  bool startFullscreen;\n"
     if marker not in hs:
@@ -323,6 +329,19 @@ extern "C" dawn::native::opengl::EGLFunctionPointerType MeleeFlipEGLProc(const c
             raise SystemExit("gpu.cpp: EGL proc block not found")
         s = s.replace(old, new, 1)
     gpu.write_text(s)
+
+# Strikers exposes atomic shader warmup counters through aurora_get_pipeline_counts().
+# The implementation merged cleanly into pipeline_cache.cpp; restore its private declaration
+# after resolving pipeline_cache.hpp in favour of the fast renderer.
+pipeline_h = root / "extern/aurora/lib/gfx/pipeline_cache.hpp"
+phs = pipeline_h.read_text()
+if "void get_pipeline_counts(uint32_t& queued, uint32_t& created);" not in phs:
+    old = "bool get_pipeline(PipelineRef ref, wgpu::RenderPipeline& pipeline);\n"
+    new = old + "void get_pipeline_counts(uint32_t& queued, uint32_t& created);\n"
+    if old not in phs:
+        raise SystemExit("pipeline_cache.hpp: get_pipeline marker not found")
+    phs = phs.replace(old, new, 1)
+    pipeline_h.write_text(phs)
 
 # 6b) Do not let pkg-config inject the GitHub runner's host sqlite into an
 # AArch64 cross build. Fast Aurora can build SQLite's amalgamation itself, which
