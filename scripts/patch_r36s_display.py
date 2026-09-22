@@ -330,6 +330,20 @@ extern "C" dawn::native::opengl::EGLFunctionPointerType MeleeFlipEGLProc(const c
         s = s.replace(old, new, 1)
     gpu.write_text(s)
 
+# command_processor.hpp can auto-merge both the current fast-Aurora two-argument
+# process() declaration and Strikers' old diagnostic streamPos overload. Because the
+# latter has a default argument, every two-argument call becomes ambiguous. The fast
+# FIFO/command processor no longer uses streamPos, so normalize the public declaration.
+command_h = root / "extern/aurora/lib/gx/command_processor.hpp"
+chs = command_h.read_text()
+chs = chs.replace(
+    "ProcessResult process(const uint8_t* data, uint32_t size, uint64_t streamPos = 0) noexcept;\n",
+    ""
+)
+if chs.count("ProcessResult process(const uint8_t* data, uint32_t size) noexcept;") != 1:
+    raise SystemExit("command_processor.hpp: expected exactly one fast process declaration")
+command_h.write_text(chs)
+
 # Strikers exposes atomic shader warmup counters through aurora_get_pipeline_counts().
 # The implementation merged cleanly into pipeline_cache.cpp; restore its private declaration
 # after resolving pipeline_cache.hpp in favour of the fast renderer.
