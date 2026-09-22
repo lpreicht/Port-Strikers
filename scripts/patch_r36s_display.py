@@ -324,6 +324,57 @@ extern "C" dawn::native::opengl::EGLFunctionPointerType MeleeFlipEGLProc(const c
         s = s.replace(old, new, 1)
     gpu.write_text(s)
 
+# 6b) Do not let pkg-config inject the GitHub runner's host sqlite into an
+# AArch64 cross build. Fast Aurora can build SQLite's amalgamation itself, which
+# gives us matching headers and a GLIBC-independent static object.
+extern_cmake = root / "extern/aurora/extern/CMakeLists.txt"
+ecs = extern_cmake.read_text()
+old = """  aurora_find_package_global(SQLite3)
+  if (TARGET SQLite3::SQLite3)
+    message(STATUS "aurora: Using existing sqlite3")
+    add_library(sqlite3 ALIAS SQLite3::SQLite3)
+  elseif (TARGET SQLite::SQLite3) # CMake < 4.3
+    message(STATUS "aurora: Using existing sqlite3")
+    add_library(sqlite3 ALIAS SQLite::SQLite3)
+  else ()
+    find_package(PkgConfig)
+    if (PkgConfig_FOUND)
+      pkg_check_modules(sqlite3 IMPORTED_TARGET GLOBAL sqlite3)
+      if (TARGET PkgConfig::sqlite3)
+        add_library(sqlite3 ALIAS PkgConfig::sqlite3)
+      endif ()
+    endif ()
+  endif ()
+
+"""
+new = """  if (NOT CMAKE_CROSSCOMPILING)
+    aurora_find_package_global(SQLite3)
+    if (TARGET SQLite3::SQLite3)
+      message(STATUS "aurora: Using existing sqlite3")
+      add_library(sqlite3 ALIAS SQLite3::SQLite3)
+    elseif (TARGET SQLite::SQLite3) # CMake < 4.3
+      message(STATUS "aurora: Using existing sqlite3")
+      add_library(sqlite3 ALIAS SQLite::SQLite3)
+    else ()
+      find_package(PkgConfig)
+      if (PkgConfig_FOUND)
+        pkg_check_modules(sqlite3 IMPORTED_TARGET GLOBAL sqlite3)
+        if (TARGET PkgConfig::sqlite3)
+          add_library(sqlite3 ALIAS PkgConfig::sqlite3)
+        endif ()
+      endif ()
+    endif ()
+  else ()
+    message(STATUS "aurora: Cross compiling; forcing bundled sqlite3")
+  endif ()
+
+"""
+if new not in ecs:
+    if old not in ecs:
+        raise SystemExit("Aurora sqlite discovery block not found")
+    ecs = ecs.replace(old, new, 1)
+    extern_cmake.write_text(ecs)
+
 # 7) The Melee bridge normally inherits C++20 and several transitive standard
 # headers from Melee's own target. Strikers' main target is C++11, so make the
 # bridge self-contained instead of relying on include order.
