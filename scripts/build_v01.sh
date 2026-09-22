@@ -159,6 +159,39 @@ PY
 # Add only the application-side R36S SDL/KMSDRM display bridge and renderer config.
 python3 "$ROOT/scripts/patch_r36s_display.py" "$STRIKERS" "$MELEE"
 
+# Upstream rebuild.sh intentionally reduces final linker failures to lines containing
+# "error/undefined" and then deletes the temporary log. Some AArch64 linker failures
+# (relocations, ABI/version-script issues, etc.) contain neither word. Preserve and
+# print the full tail so a CI failure always exposes the actual linker diagnosis.
+python3 - "$STRIKERS/tools/rebuild.sh" <<'PY'
+from pathlib import Path
+import sys
+p = Path(sys.argv[1])
+s = p.read_text()
+old = """if [ "$STATUS" -ne 0 ]; then
+    echo "==> LINK FAILED" >&2
+    grep -E 'error|Undefined|undefined' "$LOG" | head -20 >&2
+    rm -f "$LOG"
+    exit 1
+fi
+"""
+new = """if [ "$STATUS" -ne 0 ]; then
+    echo "==> LINK FAILED" >&2
+    grep -E 'error|Undefined|undefined|relocation|multiple definition|cannot find|not found|version|overflow|truncated|dangerous relocation' "$LOG" | head -80 >&2 || true
+    echo "==> LINK LOG TAIL" >&2
+    tail -n 160 "$LOG" >&2 || true
+    cp "$LOG" "$BUILD/strikers-link-failure.log" 2>/dev/null || true
+    rm -f "$LOG"
+    exit 1
+fi
+"""
+if new not in s:
+    if old not in s:
+        raise SystemExit("rebuild.sh final-link failure block not found")
+    s = s.replace(old, new, 1)
+    p.write_text(s)
+PY
+
 # Strikers-facing compatibility symbols are injected by the display patch, so
 # validate them only after that step.
 grep -q "aurora_capture_frame" "$STRIKERS/extern/aurora/include/aurora/aurora.h"
