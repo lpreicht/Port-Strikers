@@ -1,18 +1,18 @@
 {
   "version": 4,
-  "name": "strikers-r36s-v0.1.zip",
+  "name": "strikers-r36s-v0.7.zip",
   "items": [
     "Super Mario Strikers.sh",
     "strikers"
   ],
   "items_opt": [],
   "attr": {
-    "title": "Super Mario Strikers (native) [R36S test]",
+    "title": "Super Mario Strikers (native) [R36S]",
     "porter": [
       "lpreicht",
       "OpenAI"
     ],
-    "desc": "Experimental native AArch64 PortMaster adaptation of Super Mario Strikers for RK3326 / Mali-G31 handhelds.",
+    "desc": "Native AArch64 PortMaster adaptation of Super Mario Strikers for RK3326 / Mali-G31 handhelds, with R36S renderer, audio, replay and clean-exit fixes.",
     "inst": "Place your own legally dumped USA G4QE01 .iso in ports/strikers/assets/.",
     "genres": [
       "sports",
