@@ -473,6 +473,53 @@ gxs = gxs.replace("          .textureView = sEmptyTextureView,\n",
                   "          .textureView = sEmptyTexture->sampleTextureView,\n")
 gx_cpp.write_text(gxs)
 
+# Resolve three Strikers-only symbols that survive the Aurora merge.
+# 1) note_display_list() was only used by Strikers' fatal-desync diagnostics. Fast
+# Aurora's resident display-list path references/caches the source list directly, so
+# the old splice bookkeeping is obsolete and should not be stubbed into the hot path.
+gx_disp = root / "extern/aurora/lib/dolphin/gx/GXDispList.cpp"
+gds = gx_disp.read_text()
+gds = gds.replace(
+    "  aurora::gx::fifo::note_display_list(data, nbytes);\n"
+    "  aurora::gx::fifo::write_data(data, nbytes);\n",
+    "  aurora::gx::fifo::write_data(data, nbytes);\n"
+)
+gx_disp.write_text(gds)
+
+# 2) Strikers' old background pre-conversion hook is superseded by Fast Aurora's
+# texture cache/upload pipeline. Remove the old call from GXInitTexObjLOD rather
+# than providing a no-op unresolved compatibility function.
+gx_tex = root / "extern/aurora/lib/dolphin/gx/GXTexture.cpp"
+gts = gx_tex.read_text()
+gts = gts.replace(
+    "  // smstrikers-port: the object is complete once its LOD range is set, so conversion can start here.\n"
+    "  aurora::gx::texture::preconvert_texture(*obj);\n",
+    ""
+)
+gts = gts.replace("  aurora::gx::texture::preconvert_texture(*obj);\n", "")
+gx_tex.write_text(gts)
+
+# 3) GXAdjustForOverscan genuinely needs to know whether Strikers pinned the
+# framebuffer scale. Fast Aurora still owns g_frameBufferScale, it only dropped
+# Strikers' getter, so restore that getter beside set_frame_buffer_scale().
+window_h = root / "extern/aurora/lib/window.hpp"
+whs = window_h.read_text()
+if "float get_frame_buffer_scale();" not in whs:
+    decl_marker = "void set_frame_buffer_scale(float scale);\n"
+    if decl_marker not in whs:
+        raise SystemExit("window.hpp: set_frame_buffer_scale declaration not found")
+    whs = whs.replace(decl_marker, decl_marker + "float get_frame_buffer_scale();\n", 1)
+    window_h.write_text(whs)
+
+window_cpp = root / "extern/aurora/lib/window.cpp"
+wcs = window_cpp.read_text()
+if "float get_frame_buffer_scale()" not in wcs:
+    def_marker = "void set_frame_buffer_scale(float scale) {\n"
+    if def_marker not in wcs:
+        raise SystemExit("window.cpp: set_frame_buffer_scale definition not found")
+    wcs = wcs.replace(def_marker, "float get_frame_buffer_scale() { return g_frameBufferScale; }\n\n" + def_marker, 1)
+    window_cpp.write_text(wcs)
+
 # 6b) Do not let pkg-config inject the GitHub runner's host sqlite into an
 # AArch64 cross build. Fast Aurora can build SQLite's amalgamation itself, which
 # gives us matching headers and a GLIBC-independent static object.
