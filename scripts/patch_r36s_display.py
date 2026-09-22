@@ -600,4 +600,101 @@ if "#include <limits>" not in ps:
                     "#include <limits>\n#include <dawn/native/OpenGLBackend.h>\n", 1)
     present_cpp.write_text(ps)
 
+
+# 8) ArkOS' old Mali EGL accepts the SDL window surface for presentation but
+# eglQuerySurface(EGL_CONFIG_ID) after SDL2 releases its context can return
+# EGL_BAD_SURFACE. Capture SDL's context config while it is current and let the
+# presenter use the known panel size rather than re-querying the released surface.
+display_cpp = melee / "native/platform/flip/display.cpp"
+ds = display_cpp.read_text()
+if "EGLint sdlConfigId = 0;" not in ds:
+    ds = ds.replace(
+        "EGLSurface sdlSurface = EGL_NO_SURFACE; // SDL's window EGL surface; the present worker swaps it.\n",
+        "EGLSurface sdlSurface = EGL_NO_SURFACE; // SDL's window EGL surface; the present worker swaps it.\n"
+        "EGLint sdlConfigId = 0;\n",
+        1
+    )
+
+capture_marker = '    if (sdlSurface == EGL_NO_SURFACE) failSdl("SDL did not create a window EGL surface");\n'
+capture_block = capture_marker + '''    if (!eglQueryContext(display, reinterpret_cast<EGLContext>(sdlContext), EGL_CONFIG_ID, &sdlConfigId)) {
+        std::fprintf(stderr, "[flip-display] cannot query SDL EGL context config (EGL=0x%x); presenter will fall back to producer config\\n", eglGetError());
+        sdlConfigId = 0;
+    } else {
+        std::fprintf(stderr, "[flip-display] SDL EGL config id %d\\n", sdlConfigId);
+    }
+'''
+if "SDL EGL config id %d" not in ds:
+    if capture_marker not in ds:
+        raise SystemExit("display.cpp: SDL surface marker not found")
+    ds = ds.replace(capture_marker, capture_block, 1)
+
+surface_export = 'extern "C" void* MeleeFlipPresentSurface() { return sdlSurface; }\n'
+config_export = surface_export + 'extern "C" int MeleeFlipPresentConfigId() { return static_cast<int>(sdlConfigId); }\n'
+if "MeleeFlipPresentConfigId" not in ds:
+    if surface_export not in ds:
+        raise SystemExit("display.cpp: present surface export not found")
+    ds = ds.replace(surface_export, config_export, 1)
+display_cpp.write_text(ds)
+
+present_cpp = melee / "native/platform/flip/present_worker.cpp"
+ps = present_cpp.read_text()
+decl_marker = 'extern "C" void* MeleeFlipPresentSurface(); // SDL\\'s window EGL surface (SDL path); the worker swaps it.\n'
+decl_extra = decl_marker + '''extern "C" int MeleeFlipPresentConfigId();
+extern "C" void MeleeFlipPanelSize(unsigned* width, unsigned* height);
+'''
+if "MeleeFlipPresentConfigId" not in ps:
+    if decl_marker not in ps:
+        raise SystemExit("present_worker.cpp: present surface declaration not found")
+    ps = ps.replace(decl_marker, decl_extra, 1)
+
+old_size = '''    EGLint width = 0, height = 0;
+    if (!eglQuerySurface(workerDisplay, workerSurface, EGL_WIDTH, &width) ||
+        !eglQuerySurface(workerDisplay, workerSurface, EGL_HEIGHT, &height))
+        fail("Cannot query presentation surface");
+'''
+new_size = '''    EGLint width = 0, height = 0;
+    if (MeleeFlipUsesSdlDisplay()) {
+        unsigned panelW = 0, panelH = 0;
+        MeleeFlipPanelSize(&panelW, &panelH);
+        width = static_cast<EGLint>(panelW);
+        height = static_cast<EGLint>(panelH);
+    } else if (!eglQuerySurface(workerDisplay, workerSurface, EGL_WIDTH, &width) ||
+               !eglQuerySurface(workerDisplay, workerSurface, EGL_HEIGHT, &height)) {
+        fail("Cannot query presentation surface");
+    }
+'''
+if new_size not in ps:
+    if old_size not in ps:
+        raise SystemExit("present_worker.cpp: surface size query block not found")
+    ps = ps.replace(old_size, new_size, 1)
+
+old_config = '''        EGLint configId = 0, count = 0;
+        EGLConfig config = nullptr;
+        if (!eglQuerySurface(workerDisplay, workerSurface, EGL_CONFIG_ID, &configId))
+            fail("Cannot query presentation configuration");
+        const EGLint choose[] = {EGL_CONFIG_ID, configId, EGL_NONE};
+        if (!eglChooseConfig(workerDisplay, choose, &config, 1, &count) || count != 1)
+            fail("Cannot choose presentation configuration");
+'''
+new_config = '''        EGLint configId = 0, count = 0;
+        EGLConfig config = nullptr;
+        if (MeleeFlipUsesSdlDisplay()) {
+            configId = static_cast<EGLint>(MeleeFlipPresentConfigId());
+            if (configId == 0 && !eglQueryContext(workerDisplay, share, EGL_CONFIG_ID, &configId))
+                fail("Cannot query presentation context configuration");
+        } else if (!eglQuerySurface(workerDisplay, workerSurface, EGL_CONFIG_ID, &configId)) {
+            fail("Cannot query presentation configuration");
+        }
+        if (configId != 0) {
+            const EGLint choose[] = {EGL_CONFIG_ID, configId, EGL_NONE};
+            if (!eglChooseConfig(workerDisplay, choose, &config, 1, &count) || count != 1)
+                fail("Cannot choose presentation configuration");
+        }
+'''
+if new_config not in ps:
+    if old_config not in ps:
+        raise SystemExit("present_worker.cpp: presentation config query block not found")
+    ps = ps.replace(old_config, new_config, 1)
+present_cpp.write_text(ps)
+
 print("Applied R36S SDL/KMSDRM + Dawn EGL/pbuffer display bridge")
