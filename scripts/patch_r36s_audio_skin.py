@@ -56,6 +56,20 @@ replace_once(
 audio_out = root / "src/platform/audio_out.cpp"
 replace_once(
     audio_out,
+    """// How far ahead to keep the device fed: 30 ms covers a dropped frame at 60 Hz.
+constexpr int kTargetBuffers = 6;\n""",
+    """// R36S: the renderer can occasionally hold the game thread for longer than one
+// frame even when the visible animation stays smooth. Keep ~100 ms of MusyX
+// source audio queued so those stalls do not turn into audible gaps.
+#if defined(MELEE_MIYOO_FLIP)
+constexpr int kTargetBuffers = 20;
+#else
+constexpr int kTargetBuffers = 6;
+#endif\n""",
+    "R36S audio target queue",
+)
+replace_once(
+    audio_out,
     """SDL_AudioStream* s_stream = nullptr;
 bool s_ownsSubsystem = false;
 """,
