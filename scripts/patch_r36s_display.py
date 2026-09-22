@@ -348,6 +348,14 @@ if "void get_pipeline_counts(uint32_t& queued, uint32_t& created);" not in phs:
 # replacing Strikers' useful ByteBuffer diagnostics/extensions.
 internal_h = root / "extern/aurora/lib/internal.hpp"
 ihs = internal_h.read_text()
+# ByteReader needs the same standard-library surface as current fast Aurora.
+for header in ("<limits>", "<span>", "<string>"):
+    include = "#include " + header + "\n"
+    if include not in ihs:
+        anchor = "#include <cstdint>\n"
+        if anchor not in ihs:
+            raise SystemExit("internal.hpp: cstdint include marker not found")
+        ihs = ihs.replace(anchor, anchor + include, 1)
 if "class ByteReader" not in ihs:
     insert = r'''
 class ByteReader {
@@ -428,6 +436,8 @@ private:
     if end not in ihs:
         raise SystemExit("internal.hpp: aurora namespace end not found")
     ihs = ihs.replace(end, insert + end, 1)
+    internal_h.write_text(ihs)
+else:
     internal_h.write_text(ihs)
 
 # One stale Strikers texture-view line survives the automatic GX merge. Fast
