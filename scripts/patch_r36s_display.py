@@ -39,7 +39,7 @@ aurora_h.write_text(hs)
 
 compat_cpp = root / "src/platform/r36s_aurora_compat.cpp"
 compat_cpp.write_text(r'''#include <aurora/aurora.h>
-#include "window.hpp"
+#include "../../extern/aurora/lib/window.hpp"
 
 #include <cstddef>
 #include <cstdint>
