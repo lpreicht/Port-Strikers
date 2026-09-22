@@ -157,11 +157,6 @@ fi
 export MELEE_FLIP_PRESENT_THREAD="${MELEE_FLIP_PRESENT_THREAD:-1}"
 export MELEE_FLIP_ASYNC_PRESENT="${MELEE_FLIP_ASYNC_PRESENT:-1}"
 
-# The pinned fast-Aurora probe only checks early busy scenes. Goal replays are
-# later/heavier and are the only place this Mali-G31 shows missing/transparent
-# character draws, so force the renderer's existing per-draw texture-fetch
-# barrier instead of waiting for the startup probe to notice it.
-export AURORA_GLES_DRAW_BARRIER="${AURORA_GLES_DRAW_BARRIER:-1}"
 
 chmod +x "$GAMEDIR/strikers"
 # gptokeyb2 uses pkill on ArkOS; Linux comm names are limited to 15 chars, so
