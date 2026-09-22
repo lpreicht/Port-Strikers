@@ -165,7 +165,10 @@ new = '''        PortAuroraConfigure(&cfg);
         cfg.uniformTable = true;
         cfg.batchDraws = true;
         cfg.glesDirectSubmission = 1;
-        cfg.glesMappedStreams = 1;
+        // Keep direct GLES submission, but stage GX streams through WebGPU buffers.
+        // Persistent mapped stream slots are fast, but the only remaining visual
+        // corruption is isolated to goal replays where stream lifetime changes sharply.
+        cfg.glesMappedStreams = -1;
         cfg.sortOpaqueDraws = false;
         cfg.renderStats = false;
         cfg.sceneOnSurface = true;
