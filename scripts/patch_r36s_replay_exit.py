@@ -66,12 +66,6 @@ replace_once(begin, old, new, "R36S rigid character compatibility")
 # SDL/KMSDRM and PortMaster all get their cleanup paths.
 # ---------------------------------------------------------------------------
 inp = root / "src/platform/input.cpp"
-replace_once(
-    inp,
-    '#include "port/input.h"\\n',
-    '#include "port/input.h"\\n#include "port/overlay.h"\\n',
-    "R36S graceful quit include",
-)
 old = """    // A controller can arrive at any time, and its mapping is Aurora's until the file's is put over
     // it.
     poll_controllers(probe_pad());
@@ -87,6 +81,7 @@ new = """    // A controller can arrive at any time, and its mapping is Aurora's
     // PortMaster convention on R36S: Select/Back + Start exits the port.
     // Do this in-process instead of relying on gptokeyb2/pkill: the latter
     // receives the combo on ArkOS but does not reliably kill this binary.
+    extern void PortRequestQuit(void);
     for (u32 i = 0; i < PADCount(); ++i)
     {
         SDL_Gamepad* pad = PADGetSDLGamepadForIndex(i);
