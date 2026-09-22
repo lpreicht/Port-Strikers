@@ -75,13 +75,15 @@ fi
 export SDL3SHIM_SDL2_VIDEODRIVER="$inner_video"
 export SDL3SHIM_SDL2_AUDIODRIVER="$inner_audio"
 export SDL_VIDEODRIVER=sdl2
-export SDL_AUDIODRIVER=sdl2
+# SDL3 handles audio through its native ALSA driver in V0.4. Video still uses
+# the SDL2 shim because ArkOS' KMSDRM stack is provided there.
+export SDL_AUDIODRIVER=alsa
 
 # R36S/ArkOS: make PortMaster's kill combo deterministic. gptokeyb defaults to
 # BACK/SELECT unless HOTKEY was inherited from device detection; force it here.
 export HOTKEY=back
 
-echo "[launcher] SDL3 shim -> SDL2 video=$SDL3SHIM_SDL2_VIDEODRIVER audio=$SDL3SHIM_SDL2_AUDIODRIVER"
+echo "[launcher] SDL3 video=sdl2->$SDL3SHIM_SDL2_VIDEODRIVER audio=$SDL_AUDIODRIVER"
 
 # Known-good ArkOS Mali-G31 driver on the user's R36S.
 MALI="/usr/local/lib/aarch64-linux-gnu/libmali-bifrost-g31-rxp0-gbm.so"
@@ -155,13 +157,13 @@ fi
 export MELEE_FLIP_PRESENT_THREAD="${MELEE_FLIP_PRESENT_THREAD:-1}"
 export MELEE_FLIP_ASYNC_PRESENT="${MELEE_FLIP_ASYNC_PRESENT:-1}"
 
-chmod +x "$GAMEDIR/strikers.aarch64"
+chmod +x "$GAMEDIR/strikers"
 # gptokeyb2 uses pkill on ArkOS; Linux comm names are limited to 15 chars, so
 # "strikers.aarch64" cannot be matched reliably. The executable comm begins "strikers".
 $GPTOKEYB2 "strikers" -c "$GAMEDIR/strikers.gptk.ini" &
 
-pm_platform_helper "$GAMEDIR/strikers.aarch64"
-./strikers.aarch64
+pm_platform_helper "$GAMEDIR/strikers"
+./strikers
 status=$?
 
 echo "[launcher] strikers exit status: $status"
