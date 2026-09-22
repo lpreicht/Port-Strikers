@@ -730,8 +730,9 @@ if new_sig not in es:
 
 es = es.replace(
     "  const uint32_t copyEnd = AURORA_ALIGN(highWater, 4);\n",
-    "  const uint32_t copyEnd = static_cast<uint32_t>(std::min<uint64_t>(\\n"
-    "      AURORA_ALIGN(uint64_t{highWater}, StagingCopyAlign), poolSize));\\n",
+    """  const uint32_t copyEnd = static_cast<uint32_t>(std::min<uint64_t>(
+      AURORA_ALIGN(uint64_t{highWater}, StagingCopyAlign), poolSize));
+""",
     1,
 )
 
