@@ -83,7 +83,6 @@ mkdir -p "$STRIKERS/extern/aurora"
 ( cd "$FAST_AURORA" && tar --exclude=.git -cf - . ) | ( cd "$STRIKERS/extern/aurora" && tar -xf - )
 
 test -f "$STRIKERS/extern/aurora/include/aurora/aurora.h"
-grep -q "aurora_capture_frame" "$STRIKERS/extern/aurora/include/aurora/aurora.h"
 grep -q "glesDirectSubmission" "$STRIKERS/extern/aurora/include/aurora/aurora.h"
 grep -q "AURORA_GLES_DIRECT" "$STRIKERS/extern/aurora/cmake/aurora_gx.cmake"
 
@@ -159,6 +158,11 @@ PY
 # Fast Aurora already contains the Mali CPU vertex path and GLES-direct renderer.
 # Add only the application-side R36S SDL/KMSDRM display bridge and renderer config.
 python3 "$ROOT/scripts/patch_r36s_display.py" "$STRIKERS" "$MELEE"
+
+# Strikers-facing compatibility symbols are injected by the display patch, so
+# validate them only after that step.
+grep -q "aurora_capture_frame" "$STRIKERS/extern/aurora/include/aurora/aurora.h"
+test -f "$STRIKERS/src/platform/r36s_aurora_compat.cpp"
 
 TOOLCHAIN="$MELEE/native/platform/flip/toolchain-a35.cmake"
 
