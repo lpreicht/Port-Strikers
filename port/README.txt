@@ -1,6 +1,6 @@
-SUPER MARIO STRIKERS R36S V0.7 FINAL CANDIDATE
+SUPER MARIO STRIKERS R36S v1.0.0 FINAL
 
-Native AArch64 / PortMaster adaptation for RK3326 / Mali-G31 handhelds (ArkOS).
+Final native AArch64 / PortMaster adaptation for RK3326 / Mali-G31 handhelds (ArkOS).
 
 GAME DATA IS NOT INCLUDED.
 
@@ -34,3 +34,10 @@ Controls:
 If troubleshooting, attach:
   ports/strikers/log.txt
   ports/strikers/strikers-log.txt
+
+
+FINAL RELEASE STATUS
+  - Version: R36S v1.0.0 Final
+  - Frozen: 2026-09-23
+  - Stable baseline: audio, gameplay, replays, 3D models and clean Start+Select exit verified on R36S
+  - Further renderer experiments are intentionally excluded from this final build.
