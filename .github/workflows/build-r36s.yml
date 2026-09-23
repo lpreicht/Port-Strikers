@@ -1,19 +1,13 @@
-name: Build R36S V0.7
+name: Build R36S v1.0.0 Final
 
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - "scripts/**"
-      - "port/**"
-      - ".github/workflows/build-r36s.yml"
 
 permissions:
   contents: read
 
 concurrency:
-  group: strikers-r36s-v07
+  group: strikers-r36s-v100-final
   cancel-in-progress: true
 
 jobs:
@@ -59,18 +53,18 @@ jobs:
       - name: Build PortMaster package
         run: SKIP_PREP=1 bash scripts/build_v01.sh
 
-      - name: Upload V0.7 package
+      - name: Upload final v1.0.0 package
         uses: actions/upload-artifact@v4
         with:
-          name: strikers-r36s-v0.7
-          path: dist/strikers-r36s-v0.7.zip
+          name: strikers-r36s-v1.0.0
+          path: dist/strikers-r36s-v1.0.0.zip
           if-no-files-found: error
 
       - name: Upload configure/build logs on failure
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: strikers-r36s-v0.7-build-tree
+          name: strikers-r36s-v1.0.0-build-tree
           path: |
             build/strikers-r36s/CMakeCache.txt
             build/strikers-r36s/CMakeFiles/CMakeConfigureLog.yaml
