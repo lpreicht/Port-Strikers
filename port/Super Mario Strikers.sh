@@ -160,7 +160,7 @@ export AURORA_GLES_DRIVER_PROBE="${AURORA_GLES_DRIVER_PROBE:-0}"
 chmod +x "$GAMEDIR/strikers"
 # gptokeyb2 uses pkill on ArkOS; Linux comm names are limited to 15 chars, so
 # "strikers.aarch64" cannot be matched reliably. The executable comm begins "strikers".
-$GPTOKEYB2 "strikers" -c "$GAMEDIR/strikers.gptk.ini" &
+$GPTOKEYB2 "strikers" -c "$GAMEDIR/strikers.gptk.ini" >/dev/null 2>&1 &
 GPTK_PID=$!
 
 pm_platform_helper "$GAMEDIR/strikers"
