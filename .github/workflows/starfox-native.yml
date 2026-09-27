@@ -34,6 +34,9 @@ jobs:
             vulkan-loader-devel
           export PATH="/opt/python/cp311-cp311/bin:$PATH"
           python -m pip install --no-cache-dir "cmake==3.31.6" ninja
+          curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain stable
+          export PATH="$HOME/.cargo/bin:/opt/python/cp311-cp311/bin:$PATH"
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
           echo "/opt/python/cp311-cp311/bin" >> "$GITHUB_PATH"
           echo "=== TOOLCHAIN ==="
           uname -a
@@ -43,6 +46,8 @@ jobs:
           cmake --version
           ninja --version
           python --version
+          rustc --version
+          cargo --version
 
       - name: Fetch Foxhollow v1.0.4
         shell: bash
