@@ -37,10 +37,10 @@ jobs:
           echo "/opt/python/cp311-cp311/bin" >> "$GITHUB_PATH"
           echo "=== TOOLCHAIN ==="
           uname -a
-          ldd --version | head -1
-          gcc --version | head -1
-          g++ --version | head -1
-          cmake --version | head -1
+          ldd --version
+          gcc --version
+          g++ --version
+          cmake --version
           ninja --version
           python --version
 
