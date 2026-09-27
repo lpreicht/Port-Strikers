@@ -1,0 +1,114 @@
+name: Star Fox Adventures R36S Native
+
+on:
+  push:
+    branches:
+      - starfox-native-build
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04-arm
+    container:
+      image: quay.io/pypa/manylinux_2_28_aarch64:latest
+
+    steps:
+      - name: Prepare glibc 2.28 ARM64 build environment
+        shell: bash
+        run: |
+          set -euxo pipefail
+          dnf -y install \
+            git curl tar gzip unzip zip patch which file \
+            pkgconf-pkg-config \
+            zlib-devel libjpeg-turbo-devel \
+            libX11-devel libXext-devel libXrandr-devel libXcursor-devel \
+            libXfixes-devel libXi-devel libXScrnSaver-devel libXtst-devel \
+            libxkbcommon-devel \
+            wayland-devel wayland-protocols-devel \
+            alsa-lib-devel pulseaudio-libs-devel \
+            systemd-devel dbus-devel \
+            libdrm-devel mesa-libgbm-devel mesa-libGL-devel mesa-libEGL-devel \
+            vulkan-loader-devel
+          export PATH="/opt/python/cp311-cp311/bin:$PATH"
+          python -m pip install --no-cache-dir "cmake==3.31.6" ninja
+          echo "/opt/python/cp311-cp311/bin" >> "$GITHUB_PATH"
+          echo "=== TOOLCHAIN ==="
+          uname -a
+          ldd --version | head -1
+          gcc --version | head -1
+          g++ --version | head -1
+          cmake --version | head -1
+          ninja --version
+          python --version
+
+      - name: Fetch Foxhollow v1.0.4
+        shell: bash
+        run: |
+          set -euxo pipefail
+          git clone https://github.com/JackPriceBurns/foxhollow.git foxhollow-src
+          cd foxhollow-src
+          git checkout 29bcac7af9c1451d36f55d1159bc86d2584956dd
+          git submodule update --init --recursive
+          git rev-parse HEAD
+
+      - name: Configure native AArch64 build
+        shell: bash
+        run: |
+          set -euxo pipefail
+          export PATH="/opt/python/cp311-cp311/bin:$PATH"
+          export CFLAGS="-O2 -pipe"
+          export CXXFLAGS="-O2 -pipe -std=gnu++20"
+          cmake -S foxhollow-src -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_C_COMPILER=gcc \
+            -DCMAKE_CXX_COMPILER=g++ \
+            -DCMAKE_CXX_STANDARD=20 \
+            -DCMAKE_CXX_STANDARD_REQUIRED=ON \
+            -DCMAKE_CXX_EXTENSIONS=ON \
+            -DFOXHOLLOW_DEBUG_SHORTCUTS=OFF \
+            -DFOXHOLLOW_STATIC_JPEG=ON \
+            -DAURORA_DAWN_PROVIDER=vendor \
+            -DAURORA_DAWN_LINKAGE=static \
+            -DAURORA_SDL3_PROVIDER=vendor \
+            -DAURORA_SDL3_LINKAGE=static \
+            -DAURORA_NOD_PROVIDER=vendor \
+            -DAURORA_NOD_LINKAGE=static
+
+      - name: Build Foxhollow
+        shell: bash
+        run: |
+          set -euxo pipefail
+          export PATH="/opt/python/cp311-cp311/bin:$PATH"
+          cmake --build build --target foxhollow --parallel 2
+
+      - name: Verify ArkOS compatibility and package
+        shell: bash
+        run: |
+          set -euxo pipefail
+          mkdir -p artifact
+          cp build/foxhollow artifact/foxhollow.aarch64
+          chmod +x artifact/foxhollow.aarch64
+          file artifact/foxhollow.aarch64 | tee artifact/file.txt
+          ldd artifact/foxhollow.aarch64 | tee artifact/ldd.txt || true
+          readelf -d artifact/foxhollow.aarch64 | tee artifact/dynamic.txt
+          readelf --version-info artifact/foxhollow.aarch64 | tee artifact/version-info.txt
+          strings artifact/foxhollow.aarch64 | grep -oE 'GLIBC_[0-9]+\.[0-9]+' | sort -Vu | tee artifact/glibc-symbols.txt || true
+          HIGHEST="$(strings artifact/foxhollow.aarch64 | grep -oE 'GLIBC_[0-9]+\.[0-9]+' | sort -Vu | tail -1 || true)"
+          echo "Highest GLIBC symbol: ${HIGHEST:-none}" | tee artifact/compatibility.txt
+          {
+            echo "Foxhollow commit: 29bcac7af9c1451d36f55d1159bc86d2584956dd"
+            echo "Build container: quay.io/pypa/manylinux_2_28_aarch64"
+            echo "Target: R36S ArkOS AeUX / aarch64 / glibc 2.30"
+            echo "Highest GLIBC symbol: ${HIGHEST:-none}"
+          } > artifact/BUILD_INFO.txt
+          sha256sum artifact/foxhollow.aarch64 > artifact/foxhollow.aarch64.sha256
+
+      - name: Upload native binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: foxhollow-r36s-aarch64
+          path: artifact/
+          if-no-files-found: error
