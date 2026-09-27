@@ -74,7 +74,7 @@ jobs:
             -DCMAKE_CXX_STANDARD_REQUIRED=ON \
             -DCMAKE_CXX_EXTENSIONS=ON \
             -DFOXHOLLOW_DEBUG_SHORTCUTS=OFF \
-            -DFOXHOLLOW_STATIC_JPEG=ON \
+            -DFOXHOLLOW_STATIC_JPEG=OFF \
             -DAURORA_DAWN_PROVIDER=vendor \
             -DAURORA_DAWN_LINKAGE=static \
             -DAURORA_SDL3_PROVIDER=vendor \
