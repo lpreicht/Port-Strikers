@@ -61,6 +61,11 @@ jobs:
           # PAL R36S build: default the emulated GameCube system language to German.
           sed -i 's/static u8 sLanguage;/static u8 sLanguage = 1;/' port/src/os_shim.c
           grep -n 'static u8 sLanguage' port/src/os_shim.c
+
+          # RK3326/Mali-G31 r13: force Dawn's OpenGLES backend.
+          # The legacy Vulkan ICD crashes inside Dawn PhysicalDevice::InitializeImpl.
+          sed -i '/\.appName = "Foxhollow",/a\      .desiredBackend = BACKEND_OPENGLES,' src/main.c
+          grep -n -A3 'appName = "Foxhollow"' src/main.c
           git submodule update --init --recursive
           git rev-parse HEAD
 
@@ -82,6 +87,10 @@ jobs:
             -DFOXHOLLOW_STATIC_JPEG=OFF \
             -DAURORA_DAWN_PROVIDER=vendor \
             -DAURORA_DAWN_LINKAGE=static \
+            -DDAWN_ENABLE_VULKAN=OFF \
+            -DDAWN_ENABLE_DESKTOP_GL=OFF \
+            -DDAWN_ENABLE_OPENGLES=ON \
+            -DDAWN_USE_WAYLAND=OFF \
             -DAURORA_SDL3_PROVIDER=vendor \
             -DAURORA_SDL3_LINKAGE=static \
             -DAURORA_NOD_PROVIDER=vendor \
@@ -112,7 +121,7 @@ jobs:
 
           # Remove build-machine absolute paths and use libraries next to the port binary.
           patchelf --replace-needed /opt/_internal/sqlite3/lib/libsqlite3.so libsqlite3.so artifact/foxhollow.aarch64
-          patchelf --set-rpath '$ORIGIN/lib' artifact/foxhollow.aarch64
+          patchelf --set-rpath '$ORIGIN/../lib' artifact/foxhollow.aarch64
 
           # Strip debug data; keep executable symbols needed at runtime.
           strip --strip-unneeded artifact/foxhollow.aarch64 || true
@@ -141,8 +150,9 @@ jobs:
             echo "Build container: quay.io/pypa/manylinux_2_28_aarch64"
             echo "Target: R36S ArkOS AeUX / aarch64 / glibc 2.30"
             echo "Default GameCube language: German (1)"
+            echo "Graphics backend: Dawn OpenGLES only (Vulkan disabled)"
             echo "Highest executable GLIBC symbol: ${HIGHEST:-none}"
-            echo "Runtime path: \$ORIGIN/lib"
+            echo "Runtime path: \$ORIGIN/../lib"
           } > artifact/BUILD_INFO.txt
 
           sha256sum artifact/foxhollow.aarch64 artifact/lib/* > artifact/SHA256SUMS.txt
