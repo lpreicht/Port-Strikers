@@ -25,7 +25,7 @@ jobs:
             pkgconf-pkg-config \
             zlib-devel libjpeg-turbo-devel \
             libX11-devel libXext-devel libXrandr-devel libXcursor-devel \
-            libXfixes-devel libXi-devel libXScrnSaver-devel libXtst-devel \
+            libXfixes-devel libXi-devel libXinerama-devel libXScrnSaver-devel libXtst-devel \
             libxkbcommon-devel \
             wayland-devel wayland-protocols-devel \
             alsa-lib-devel pulseaudio-libs-devel \
