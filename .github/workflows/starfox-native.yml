@@ -21,7 +21,7 @@ jobs:
         run: |
           set -euxo pipefail
           dnf -y install \
-            git curl tar gzip unzip zip patch which file \
+            git curl tar gzip unzip zip patch which file clang lld \
             pkgconf-pkg-config \
             zlib-devel libjpeg-turbo-devel \
             libX11-devel libXext-devel libXrandr-devel libXcursor-devel \
@@ -43,6 +43,8 @@ jobs:
           ldd --version
           gcc --version
           g++ --version
+          clang --version
+          clang++ --version
           cmake --version
           ninja --version
           python --version
@@ -68,14 +70,14 @@ jobs:
           export CXXFLAGS="-O2 -pipe -std=gnu++20"
           cmake -S foxhollow-src -B build -G Ninja \
             -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_C_COMPILER=gcc \
-            -DCMAKE_CXX_COMPILER=g++ \
+            -DCMAKE_C_COMPILER=clang \
+            -DCMAKE_CXX_COMPILER=clang++ \
             -DCMAKE_CXX_STANDARD=20 \
             -DCMAKE_CXX_STANDARD_REQUIRED=ON \
             -DCMAKE_CXX_EXTENSIONS=ON \
             -DFOXHOLLOW_DEBUG_SHORTCUTS=OFF \
             -DFOXHOLLOW_STATIC_JPEG=OFF \
-            -DAURORA_DAWN_PROVIDER=package \
+            -DAURORA_DAWN_PROVIDER=vendor \
             -DAURORA_DAWN_LINKAGE=static \
             -DAURORA_SDL3_PROVIDER=vendor \
             -DAURORA_SDL3_LINKAGE=static \
@@ -87,7 +89,7 @@ jobs:
         run: |
           set -euxo pipefail
           export PATH="/opt/python/cp311-cp311/bin:$PATH"
-          cmake --build build --target foxhollow --parallel 2
+          cmake --build build --target foxhollow --parallel 4
 
       - name: Verify ArkOS compatibility and package
         shell: bash
