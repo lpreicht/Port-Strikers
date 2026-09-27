@@ -95,6 +95,8 @@ jobs:
           set -euxo pipefail
           mkdir -p artifact
           cp build/foxhollow artifact/foxhollow.aarch64
+          mkdir -p artifact/lib
+          cp -L /usr/lib64/libjpeg.so.62 artifact/lib/libjpeg.so.62
           chmod +x artifact/foxhollow.aarch64
           file artifact/foxhollow.aarch64 | tee artifact/file.txt
           ldd artifact/foxhollow.aarch64 | tee artifact/ldd.txt || true
