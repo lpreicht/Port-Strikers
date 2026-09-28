@@ -72,7 +72,7 @@ bool present_gl_texture(uint32_t texture, uint32_t width, uint32_t height) {
   GLsync ready = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
   if (!ready) return false;
   glFlush();
-  if (!SDL_GL_MakeCurrent(g_window, g_r36sPresentContext)) {
+  if (!SDL_GL_MakeCurrent(g_window, static_cast<SDL_GLContext>(g_r36sPresentContext))) {
     Log.error("R36S V025 SDL_GL_MakeCurrent: {}", SDL_GetError());
     restore();
     glDeleteSync(ready);

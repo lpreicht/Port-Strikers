@@ -41,7 +41,7 @@ s=s.replace('    sPostRetraceCallback(sRetraceCount);\n  }\n}', '''    sPostRetr
 }''',1)
 p.write_text(s)
 p=root/'extern/aurora/lib/aurora.cpp'
-s=p.read_text().replace('    if (directPresent) {\n', '    if (directPresent) {\n      const auto submitStart = SDL_GetTicksNS();\n',1)
+s=p.read_text().replace('#include <atomic>', '#include <atomic>\n#include <SDL3/SDL_timer.h>').replace('    if (directPresent) {\n', '    if (directPresent) {\n      const auto submitStart = SDL_GetTicksNS();\n',1)
 s=s.replace('      struct Present {', '      const auto submitEnd = SDL_GetTicksNS();\n      struct Present {',1)
 s=s.replace('      if (!submitted || !present.ok) {', '''      const auto presentEnd = SDL_GetTicksNS();
       static uint64_t profileStart = submitStart, frameCount = 0;

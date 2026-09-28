@@ -20,6 +20,7 @@ fixture = r'''
 using EGLDisplay = void*; using EGLContext = void*; using EGLSurface = void*;
 using GLuint = unsigned; using GLenum = unsigned; using GLsizei = int;
 using GLsync = void*;
+struct SDL_GLContextState; using SDL_GLContext = SDL_GLContextState*;
 constexpr auto EGL_NO_DISPLAY = nullptr, EGL_NO_CONTEXT = nullptr, EGL_NO_SURFACE = nullptr;
 constexpr int EGL_TRUE=1, EGL_DRAW=2, EGL_READ=3;
 constexpr int GL_TRUE=1, GL_BLEND=1, GL_DEPTH_TEST=2, GL_STENCIL_TEST=3, GL_CULL_FACE=4,
@@ -46,7 +47,7 @@ EGLSurface eglGetCurrentSurface(int which){return which==EGL_DRAW?currentDraw:cu
 int eglGetError(){return 0;}
 int eglMakeCurrent(EGLDisplay,EGLSurface d,EGLSurface r,EGLContext c){currentContext=c;currentDraw=d;currentRead=r;return 1;}
 int eglSwapBuffers(EGLDisplay,EGLSurface){return 1;}
-bool SDL_GL_MakeCurrent(void*,void* c){if(bindFails && c)return false;if(sdlCachedContext==c)return true;sdlCachedContext=c;return eglMakeCurrent(g_r36sPresentDisplay,g_r36sPresentSurface,g_r36sPresentSurface,c);}
+bool SDL_GL_MakeCurrent(void*,SDL_GLContext c){if(bindFails && c)return false;if(sdlCachedContext==c)return true;sdlCachedContext=c;return eglMakeCurrent(g_r36sPresentDisplay,g_r36sPresentSurface,g_r36sPresentSurface,c);}
 bool SDL_GL_SwapWindow(void*){if(swapFails || currentContext!=g_r36sPresentContext)return false;++flips;return true;}
 const char* SDL_GetError(){return "test";}
 GLsync glFenceSync(int,int){return (void*)30;}
