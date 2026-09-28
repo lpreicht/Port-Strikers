@@ -244,3 +244,4 @@ jobs:
           if-no-files-found: error
 # V019 rebuild trigger: SDL renderer present path
 # V022 consolidated build trigger: SDL EGLDisplay reuse + forced Dawn pbuffer
+# V023 consolidated build trigger: shared-context zero-readback GLES presenter
