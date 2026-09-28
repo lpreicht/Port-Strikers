@@ -39,34 +39,56 @@ replace(
     """void destroy_window() {
 """,
     """bool present_software_frame(const void* pixels, uint32_t width, uint32_t height, uint32_t pitch) {
-  if (g_window == nullptr || pixels == nullptr || width == 0 || height == 0) {
+  if (g_window == nullptr || g_renderer == nullptr || pixels == nullptr || width == 0 || height == 0) {
     return false;
   }
-  SDL_Surface* dst = SDL_GetWindowSurface(g_window);
-  if (dst == nullptr) {
-    Log.error("SDL_GetWindowSurface failed: {}", SDL_GetError());
+
+  if (g_r36sPresentTexture == nullptr || g_r36sPresentWidth != width || g_r36sPresentHeight != height) {
+    if (g_r36sPresentTexture != nullptr) {
+      SDL_DestroyTexture(g_r36sPresentTexture);
+      g_r36sPresentTexture = nullptr;
+    }
+    g_r36sPresentTexture = SDL_CreateTexture(g_renderer, SDL_PIXELFORMAT_RGBA32, SDL_TEXTUREACCESS_STREAMING,
+                                             static_cast<int>(width), static_cast<int>(height));
+    if (g_r36sPresentTexture == nullptr) {
+      Log.error("R36S SDL_CreateTexture failed: {}", SDL_GetError());
+      return false;
+    }
+    SDL_SetTextureScaleMode(g_r36sPresentTexture, SDL_SCALEMODE_LINEAR);
+    g_r36sPresentWidth = width;
+    g_r36sPresentHeight = height;
+    Log.info("R36S present texture created: {}x{} renderer={}", width, height,
+             SDL_GetRendererName(g_renderer) ? SDL_GetRendererName(g_renderer) : "?");
+  }
+
+  if (!SDL_UpdateTexture(g_r36sPresentTexture, nullptr, pixels, static_cast<int>(pitch))) {
+    Log.error("R36S SDL_UpdateTexture failed: {}", SDL_GetError());
     return false;
   }
-  SDL_Surface* src = SDL_CreateSurfaceFrom(static_cast<int>(width), static_cast<int>(height), SDL_PIXELFORMAT_RGBA32,
-                                           const_cast<void*>(pixels), static_cast<int>(pitch));
-  if (src == nullptr) {
-    Log.error("SDL_CreateSurfaceFrom failed: {}", SDL_GetError());
+  if (!SDL_SetRenderDrawColor(g_renderer, 0, 0, 0, 255) || !SDL_RenderClear(g_renderer)) {
+    Log.error("R36S SDL_RenderClear failed: {}", SDL_GetError());
     return false;
   }
-  const bool blitOk = SDL_BlitSurface(src, nullptr, dst, nullptr);
-  SDL_DestroySurface(src);
-  if (!blitOk) {
-    Log.error("SDL_BlitSurface failed: {}", SDL_GetError());
+  if (!SDL_RenderTexture(g_renderer, g_r36sPresentTexture, nullptr, nullptr)) {
+    Log.error("R36S SDL_RenderTexture failed: {}", SDL_GetError());
     return false;
   }
-  if (!SDL_UpdateWindowSurface(g_window)) {
-    Log.error("SDL_UpdateWindowSurface failed: {}", SDL_GetError());
+  if (!SDL_RenderPresent(g_renderer)) {
+    Log.error("R36S SDL_RenderPresent failed: {}", SDL_GetError());
     return false;
   }
   return true;
 }
 
 void destroy_window() {
+#ifdef AURORA_R36S_OFFSCREEN
+  if (g_r36sPresentTexture != nullptr) {
+    SDL_DestroyTexture(g_r36sPresentTexture);
+    g_r36sPresentTexture = nullptr;
+    g_r36sPresentWidth = 0;
+    g_r36sPresentHeight = 0;
+  }
+#endif
 """,
 )
 
