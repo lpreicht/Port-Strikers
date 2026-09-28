@@ -108,6 +108,59 @@ void destroy_window() {
 """,
 )
 
+# window.cpp: the offscreen OpenGLES path still needs an SDL renderer for the CPU-readback image.
+# Force SDL's software renderer so presentation does not depend on the old Mali EGL/Wayland stack.
+replace(
+    "extern/aurora/lib/window.cpp",
+    """bool create_renderer() {
+  if (g_window == nullptr) {
+    return false;
+  }
+  const auto props = SDL_CreateProperties();
+  TRY(SDL_SetPointerProperty(props, SDL_PROP_RENDERER_CREATE_WINDOW_POINTER, g_window), "Failed to set {}: {}",
+      SDL_PROP_RENDERER_CREATE_WINDOW_POINTER, SDL_GetError());
+  TRY(SDL_SetNumberProperty(props, SDL_PROP_RENDERER_CREATE_PRESENT_VSYNC_NUMBER, SDL_RENDERER_VSYNC_ADAPTIVE),
+      "Failed to set {}: {}", SDL_PROP_RENDERER_CREATE_PRESENT_VSYNC_NUMBER, SDL_GetError());
+  g_renderer = SDL_CreateRendererWithProperties(props);
+  if (g_renderer == nullptr) {
+    Log.error("Failed to create renderer: {}", SDL_GetError());
+    return false;
+  }
+  return true;
+}
+""",
+    """bool create_renderer() {
+  if (g_window == nullptr) {
+    Log.error("R36S create_renderer called without a window");
+    return false;
+  }
+#ifdef AURORA_R36S_OFFSCREEN
+  SDL_ClearError();
+  g_renderer = SDL_CreateRenderer(g_window, "software");
+  if (g_renderer == nullptr) {
+    Log.error("R36S software SDL_CreateRenderer failed: {}", SDL_GetError());
+    return false;
+  }
+  Log.info("R36S SDL renderer initialized: {}",
+           SDL_GetRendererName(g_renderer) ? SDL_GetRendererName(g_renderer) : "?");
+  return true;
+#else
+  const auto props = SDL_CreateProperties();
+  TRY(SDL_SetPointerProperty(props, SDL_PROP_RENDERER_CREATE_WINDOW_POINTER, g_window), "Failed to set {}: {}",
+      SDL_PROP_RENDERER_CREATE_WINDOW_POINTER, SDL_GetError());
+  TRY(SDL_SetNumberProperty(props, SDL_PROP_RENDERER_CREATE_PRESENT_VSYNC_NUMBER, SDL_RENDERER_VSYNC_ADAPTIVE),
+      "Failed to set {}: {}", SDL_PROP_RENDERER_CREATE_PRESENT_VSYNC_NUMBER, SDL_GetError());
+  g_renderer = SDL_CreateRendererWithProperties(props);
+  if (g_renderer == nullptr) {
+    Log.error("Failed to create renderer: {}", SDL_GetError());
+    return false;
+  }
+  return true;
+#endif
+}
+""",
+)
+
 # gpu.cpp: no WebGPU window surface on R36S. Request a surfaceless GLES adapter.
 replace(
     "extern/aurora/lib/webgpu/gpu.cpp",
@@ -240,6 +293,30 @@ replace(
   const auto size = window::get_window_size();
   resize_swapchain_internal(size.fb_width, size.fb_height, size.native_fb_width, size.native_fb_height, true);
   return true;
+#endif
+""",
+)
+
+# aurora.cpp: initialize the SDL renderer even though the selected GPU backend is OpenGLES.
+replace(
+    "extern/aurora/lib/aurora.cpp",
+    """  AURORA_ASSERT(windowCreated, "Error creating window: {}", SDL_GetError());
+
+  // Initialize SDL_Renderer for ImGui when we can't use a Dawn backend
+  if (webgpu::g_backendType == wgpu::BackendType::Null) {
+    AURORA_ASSERT(window::create_renderer(), "Failed to initialize SDL renderer: {}", SDL_GetError());
+  }
+""",
+    """  AURORA_ASSERT(windowCreated, "Error creating window: {}", SDL_GetError());
+
+#ifdef AURORA_R36S_OFFSCREEN
+  // Dawn renders to an offscreen texture; SDL only presents the CPU readback.
+  AURORA_ASSERT(window::create_renderer(), "Failed to initialize R36S SDL renderer: {}", SDL_GetError());
+#else
+  // Initialize SDL_Renderer for ImGui when we can't use a Dawn backend
+  if (webgpu::g_backendType == wgpu::BackendType::Null) {
+    AURORA_ASSERT(window::create_renderer(), "Failed to initialize SDL renderer: {}", SDL_GetError());
+  }
 #endif
 """,
 )
