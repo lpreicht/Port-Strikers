@@ -84,28 +84,5 @@ GLuint GetGLInteropTexture(WGPUTexture texture) {
 """,
 )
 
-# Share Dawn's real device context with the SDL2/KMSDRM GLES renderer context.
-# Adapter discovery temporarily makes its own context current and restores the SDL
-# context afterwards, so at this point GetCurrentContext() is the firmware renderer.
-replace(
-    "src/dawn/native/opengl/PhysicalDeviceGL.cpp",
-    """    std::unique_ptr<ContextEGL> context;
-    DAWN_TRY_ASSIGN(context, ContextEGL::Create(mDisplay, GetBackendType(), useRobustness,
-                                                disableEGL15Robustness, useANGLETextureSharing,
-                                                forceES31AndMinExtensions, bindContextOnlyDuringUse,
-                                                mAngleVirtualizationGroup));
-""",
-    """    std::unique_ptr<ContextEGL> context;
-#ifdef AURORA_R36S_OFFSCREEN
-    EGLContext r36sSharedContext = mDisplay->egl->GetCurrentContext();
-#else
-    EGLContext r36sSharedContext = EGL_NO_CONTEXT;
-#endif
-    DAWN_TRY_ASSIGN(context, ContextEGL::Create(mDisplay, GetBackendType(), useRobustness,
-                                                disableEGL15Robustness, useANGLETextureSharing,
-                                                forceES31AndMinExtensions, bindContextOnlyDuringUse,
-                                                mAngleVirtualizationGroup, r36sSharedContext));
-""",
-)
 
-print("Dawn minimal R36S direct-present interop patch applied")
+print("Dawn R36S interop applied; producer context unchanged")

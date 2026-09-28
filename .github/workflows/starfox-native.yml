@@ -114,6 +114,8 @@ jobs:
           python "$GITHUB_WORKSPACE/r36s/direct_gl_present_patch.py" "$PWD"
           python "$GITHUB_WORKSPACE/r36s/vertex_texture_patch.py" "$PWD"
           python "$GITHUB_WORKSPACE/r36s/direct_nod_dvd_patch.py" "$PWD"
+          python "$GITHUB_WORKSPACE/r36s/frame_profile_patch.py" "$PWD"
+          python "$GITHUB_WORKSPACE/tests/test_present_contract.py" "$PWD/extern/aurora/lib/window.cpp"
           # R36S audio: Foxhollow's stock 40 ms queue underruns under RK3326 GPU/load spikes.
           # Use the conservative 120 ms queue together with the native-ALSA SDL3 shim path.
           sed -i 's/#define AI_OUTPUT_QUEUE_MS 40/#define AI_OUTPUT_QUEUE_MS 120/' port/src/ai_shim.c
@@ -222,11 +224,13 @@ jobs:
           done
 
           {
+            echo "R36S patch commit: $GITHUB_SHA"
+            echo "Port version: V025"
             echo "Foxhollow commit: 29bcac7af9c1451d36f55d1159bc86d2584956dd"
             echo "Build container: quay.io/pypa/manylinux_2_28_aarch64"
             echo "Target: R36S ArkOS AeUX / aarch64 / glibc 2.30"
             echo "Default GameCube language: German (1)"
-            echo "Graphics backend: Dawn OpenGLES direct GBM/EGL + R32Uint vertex texture fetch + offscreen SDL present"
+            echo "Graphics backend: Dawn OpenGLES direct GBM/EGL + R32Uint vertex texture fetch + V025 producer-shared fenced SDL/KMSDRM present; readback fallback"
             echo "SDL: shared SDL3-to-system-SDL2 PortMaster shim 6057d79b (ArkOS KMSDRM + native ALSA)"
             echo "Audio queue: 120 ms (R36S underrun guard)"
             echo "DVD loader: direct nod path open (RVZ diagnostics enabled)"
