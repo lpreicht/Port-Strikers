@@ -109,13 +109,16 @@ jobs:
           git clone https://github.com/JackPriceBurns/foxhollow.git foxhollow-src
           cd foxhollow-src
           git checkout 29bcac7af9c1451d36f55d1159bc86d2584956dd
+          rm -rf extern/aurora
+          git clone --branch perf/gx-cpu-vertex-decode --single-branch https://github.com/zalo/aurora-arm.git extern/aurora
+          git -C extern/aurora checkout ccd4c266b48198eacc105b1e2927e5bf6fc5ad02
+          echo "Aurora ARM CPU-decode commit: $(git -C extern/aurora rev-parse HEAD)"
           python "$GITHUB_WORKSPACE/r36s/offscreen_patch.py" "$PWD"
           python "$GITHUB_WORKSPACE/r36s/gbm_adapter_patch.py" "$PWD"
           python "$GITHUB_WORKSPACE/r36s/direct_gl_present_patch.py" "$PWD"
           python "$GITHUB_WORKSPACE/r36s/v026_surface_ownership_patch.py" "$PWD"
           python "$GITHUB_WORKSPACE/r36s/v027_explicit_sdl_gl_patch.py" "$PWD"
           grep -n -A10 'R36S V027 explicit SDL GLES context initialized' extern/aurora/lib/window.cpp || true
-          python "$GITHUB_WORKSPACE/r36s/vertex_texture_patch.py" "$PWD"
           python "$GITHUB_WORKSPACE/r36s/direct_nod_dvd_patch.py" "$PWD"
           python "$GITHUB_WORKSPACE/r36s/frame_profile_patch.py" "$PWD"
           python "$GITHUB_WORKSPACE/tests/test_present_contract.py" "$PWD/extern/aurora/lib/window.cpp"
@@ -129,8 +132,8 @@ jobs:
 
           # RK3326/Mali-G31 r13: force Dawn's OpenGLES backend.
           # The legacy Vulkan ICD crashes inside Dawn PhysicalDevice::InitializeImpl.
-          sed -i '/\.appName = "Foxhollow",/a\      .desiredBackend = BACKEND_OPENGLES,' src/main.c
-          grep -n -A3 'appName = "Foxhollow"' src/main.c
+          sed -i '/\.appName = "Foxhollow",/a\      .desiredBackend = BACKEND_OPENGLES,\n      .cpuVertexDecode = true,' src/main.c
+          grep -n -A6 'appName = "Foxhollow"' src/main.c
           git submodule update --init --recursive
           git rev-parse HEAD
 
@@ -142,7 +145,7 @@ jobs:
           export CCACHE_DIR="$GITHUB_WORKSPACE/.ccache"
           ccache -M 2G
           export CFLAGS="-O2 -pipe"
-          export CXXFLAGS="-O2 -pipe -std=gnu++20 -DAURORA_R36S_OFFSCREEN=1 -DAURORA_R36S_VERTEX_TEXTURE_FETCH=1"
+          export CXXFLAGS="-O2 -pipe -std=gnu++20 -DAURORA_R36S_OFFSCREEN=1"
           cmake -S foxhollow-src -B build -G Ninja \
             -DCMAKE_PREFIX_PATH="$GITHUB_WORKSPACE/sdl3-shim-install" \
             -DCMAKE_C_COMPILER_LAUNCHER=ccache \
@@ -228,12 +231,12 @@ jobs:
 
           {
             echo "R36S patch commit: $GITHUB_SHA"
-            echo "Port version: V027"
+            echo "Port version: V028"
             echo "Foxhollow commit: 29bcac7af9c1451d36f55d1159bc86d2584956dd"
             echo "Build container: quay.io/pypa/manylinux_2_28_aarch64"
             echo "Target: R36S ArkOS AeUX / aarch64 / glibc 2.30"
             echo "Default GameCube language: German (1)"
-            echo "Graphics backend: Dawn OpenGLES direct GBM/EGL + R32Uint vertex texture fetch + V027 explicit SDL GLES/KMSDRM context + producer-shared fenced present; lazy V022 readback fallback"
+            echo "Graphics backend: Aurora ARM CPU vertex decode + Dawn OpenGLES + V027 explicit SDL GLES/KMSDRM direct present; no R32Uint vertex-fetch path"
             echo "SDL: shared SDL3-to-system-SDL2 PortMaster shim 6057d79b (ArkOS KMSDRM + native ALSA)"
             echo "Audio queue: 120 ms (R36S underrun guard)"
             echo "DVD loader: direct nod path open (RVZ diagnostics enabled)"
@@ -254,3 +257,4 @@ jobs:
 # V023 consolidated build trigger: direct GPU present order fix
 # V026 consolidated build trigger: release SDL window surface before Dawn/presenter ownership
 # V027 consolidated build trigger: explicit SDL GL context instead of SDL_Renderer ownership
+# V028 consolidated build trigger: Aurora ARM CPU vertex decode without R32Uint fetch
