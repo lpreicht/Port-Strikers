@@ -136,12 +136,14 @@ replace(
   }
 #ifdef AURORA_R36S_OFFSCREEN
   SDL_ClearError();
-  g_renderer = SDL_CreateRenderer(g_window, "software");
+  // On ArkOS the shared SDL3 shim delegates to the CFW's patched SDL2 KMSDRM backend.
+  // Let that backend choose its native GLES renderer instead of forcing SDL's software path.
+  g_renderer = SDL_CreateRenderer(g_window, nullptr);
   if (g_renderer == nullptr) {
-    Log.error("R36S software SDL_CreateRenderer failed: {}", SDL_GetError());
+    Log.error("R36S SDL2/KMSDRM SDL_CreateRenderer failed: {}", SDL_GetError());
     return false;
   }
-  Log.info("R36S SDL renderer initialized: {}",
+  Log.info("R36S SDL2/KMSDRM renderer initialized: {}",
            SDL_GetRendererName(g_renderer) ? SDL_GetRendererName(g_renderer) : "?");
   return true;
 #else
