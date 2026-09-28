@@ -56,6 +56,20 @@ static bool initialize_r36s_gbm_egl_display() {
     return true;
   }
 
+  // V022: SDL2/KMSDRM has already created a working EGL display/context for
+  // the firmware's Mali stack. Reuse that exact display instead of opening
+  // /dev/dri/card0 a second time, which triggers EGL_BAD_SURFACE on r13p0.
+  g_r36sEglDisplay = eglGetCurrentDisplay();
+  if (g_r36sEglDisplay != EGL_NO_DISPLAY) {
+    const char* vendor = eglQueryString(g_r36sEglDisplay, EGL_VENDOR);
+    const char* version = eglQueryString(g_r36sEglDisplay, EGL_VERSION);
+    const char* apis = eglQueryString(g_r36sEglDisplay, EGL_CLIENT_APIS);
+    Log.info("R36S: reusing SDL/KMSDRM EGLDisplay vendor={} version={} APIs={}",
+             vendor ? vendor : "?", version ? version : "?", apis ? apis : "?");
+    return true;
+  }
+
+  Log.warn("R36S: no current SDL EGLDisplay; falling back to direct GBM display");
   g_r36sDrmFd = open("/dev/dri/card0", O_RDWR | O_CLOEXEC);
   if (g_r36sDrmFd < 0) {
     Log.error("R36S GBM: failed to open /dev/dri/card0");
