@@ -63,6 +63,7 @@ jobs:
           git checkout 29bcac7af9c1451d36f55d1159bc86d2584956dd
           python "$GITHUB_WORKSPACE/r36s/offscreen_patch.py" "$PWD"
           python "$GITHUB_WORKSPACE/r36s/gbm_adapter_patch.py" "$PWD"
+          python "$GITHUB_WORKSPACE/r36s/vertex_texture_patch.py" "$PWD"
           # PAL R36S build: default the emulated GameCube system language to German.
           sed -i 's/static u8 sLanguage;/static u8 sLanguage = 1;/' port/src/os_shim.c
           grep -n 'static u8 sLanguage' port/src/os_shim.c
@@ -80,7 +81,7 @@ jobs:
           set -euxo pipefail
           export PATH="/opt/python/cp311-cp311/bin:$PATH"
           export CFLAGS="-O2 -pipe"
-          export CXXFLAGS="-O2 -pipe -std=gnu++20 -DAURORA_R36S_OFFSCREEN=1"
+          export CXXFLAGS="-O2 -pipe -std=gnu++20 -DAURORA_R36S_OFFSCREEN=1 -DAURORA_R36S_VERTEX_TEXTURE_FETCH=1"
           cmake -S foxhollow-src -B build -G Ninja \
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_C_COMPILER=clang \
@@ -162,7 +163,7 @@ jobs:
             echo "Build container: quay.io/pypa/manylinux_2_28_aarch64"
             echo "Target: R36S ArkOS AeUX / aarch64 / glibc 2.30"
             echo "Default GameCube language: German (1)"
-            echo "Graphics backend: Dawn OpenGLES on direct GBM/EGL card0 display + offscreen SDL software present"
+            echo "Graphics backend: Dawn OpenGLES direct GBM/EGL + R32Uint vertex texture fetch + offscreen SDL present"
             echo "Highest executable GLIBC symbol: ${HIGHEST:-none}"
             echo "Runtime path: \$ORIGIN/../lib"
           } > artifact/BUILD_INFO.txt
