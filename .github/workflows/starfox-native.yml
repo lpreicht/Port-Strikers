@@ -112,6 +112,8 @@ jobs:
           python "$GITHUB_WORKSPACE/r36s/offscreen_patch.py" "$PWD"
           python "$GITHUB_WORKSPACE/r36s/gbm_adapter_patch.py" "$PWD"
           python "$GITHUB_WORKSPACE/r36s/direct_gl_present_patch.py" "$PWD"
+          python "$GITHUB_WORKSPACE/r36s/v026_surface_ownership_patch.py" "$PWD"
+          grep -n -A6 'released SDL/KMSDRM EGL surface' extern/aurora/lib/window.cpp || true
           python "$GITHUB_WORKSPACE/r36s/vertex_texture_patch.py" "$PWD"
           python "$GITHUB_WORKSPACE/r36s/direct_nod_dvd_patch.py" "$PWD"
           python "$GITHUB_WORKSPACE/r36s/frame_profile_patch.py" "$PWD"
@@ -225,12 +227,12 @@ jobs:
 
           {
             echo "R36S patch commit: $GITHUB_SHA"
-            echo "Port version: V025"
+            echo "Port version: V026"
             echo "Foxhollow commit: 29bcac7af9c1451d36f55d1159bc86d2584956dd"
             echo "Build container: quay.io/pypa/manylinux_2_28_aarch64"
             echo "Target: R36S ArkOS AeUX / aarch64 / glibc 2.30"
             echo "Default GameCube language: German (1)"
-            echo "Graphics backend: Dawn OpenGLES direct GBM/EGL + R32Uint vertex texture fetch + V025 producer-shared fenced SDL/KMSDRM present; readback fallback"
+            echo "Graphics backend: Dawn OpenGLES direct GBM/EGL + R32Uint vertex texture fetch + V026 Strikers-style released SDL surface + producer-shared fenced SDL/KMSDRM present; readback fallback"
             echo "SDL: shared SDL3-to-system-SDL2 PortMaster shim 6057d79b (ArkOS KMSDRM + native ALSA)"
             echo "Audio queue: 120 ms (R36S underrun guard)"
             echo "DVD loader: direct nod path open (RVZ diagnostics enabled)"
@@ -249,3 +251,4 @@ jobs:
 # V019 rebuild trigger: SDL renderer present path
 # V022 consolidated build trigger: SDL EGLDisplay reuse + forced Dawn pbuffer
 # V023 consolidated build trigger: direct GPU present order fix
+# V026 consolidated build trigger: release SDL window surface before Dawn/presenter ownership
