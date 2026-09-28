@@ -109,10 +109,15 @@ jobs:
           git clone https://github.com/JackPriceBurns/foxhollow.git foxhollow-src
           cd foxhollow-src
           git checkout 29bcac7af9c1451d36f55d1159bc86d2584956dd
-          rm -rf extern/aurora
-          git clone --branch perf/gx-cpu-vertex-decode --single-branch https://github.com/zalo/aurora-arm.git extern/aurora
-          git -C extern/aurora checkout ccd4c266b48198eacc105b1e2927e5bf6fc5ad02
-          echo "Aurora ARM CPU-decode commit: $(git -C extern/aurora rev-parse HEAD)"
+          # Keep Foxhollow's known-good Aurora base. Transplant only the proven ARM
+          # CPU-vertex-decode changes from the Strikers/Aurora fork.
+          curl -L --fail -o /tmp/aurora-cpu-decode.patch https://github.com/zalo/aurora-arm/commit/896a8840ae605a31a796e79168039530ab83ae2e.patch
+          curl -L --fail -o /tmp/aurora-cpu-limits.patch https://github.com/zalo/aurora-arm/commit/45f9a1eb9072fd27e07f5a13167e7da4e0b6a370.patch
+          curl -L --fail -o /tmp/aurora-stream-safety.patch https://github.com/zalo/aurora-arm/commit/e8e4c1ab6c798f65f84c78691993b9d0d0c5c45b.patch
+          patch --batch --forward -p1 -d extern/aurora < /tmp/aurora-cpu-decode.patch
+          patch --batch --forward -p1 -d extern/aurora < /tmp/aurora-cpu-limits.patch
+          patch --batch --forward -p1 -d extern/aurora < /tmp/aurora-stream-safety.patch
+          grep -n -A6 'cpuVertexDecode' extern/aurora/include/aurora/aurora.h
           python "$GITHUB_WORKSPACE/r36s/offscreen_patch.py" "$PWD"
           python "$GITHUB_WORKSPACE/r36s/gbm_adapter_patch.py" "$PWD"
           python "$GITHUB_WORKSPACE/r36s/direct_gl_present_patch.py" "$PWD"
@@ -168,7 +173,8 @@ jobs:
             -DAURORA_SDL3_PROVIDER=system \
             -DAURORA_SDL3_LINKAGE=shared \
             -DAURORA_NOD_PROVIDER=vendor \
-            -DAURORA_NOD_LINKAGE=static
+            -DAURORA_NOD_LINKAGE=static \
+            -DAURORA_VERTEX_BUFFER_MIB=8
 
       - name: Patch Dawn for RK3326 legacy Mali EGL
         shell: bash
@@ -258,4 +264,4 @@ jobs:
 # V023 consolidated build trigger: direct GPU present order fix
 # V026 consolidated build trigger: release SDL window surface before Dawn/presenter ownership
 # V027 consolidated build trigger: explicit SDL GL context instead of SDL_Renderer ownership
-# V028 consolidated build trigger: CPU vertex decode + Foxhollow memory-card API
+# V028 consolidated build trigger: transplant CPU vertex decode onto V027 Aurora base
