@@ -41,4 +41,50 @@ replace(
 """,
 )
 
-print("Dawn legacy Mali adapter gate patch applied")
+
+# r13p0 advertises EGL_KHR_surfaceless_context but eglMakeCurrent with
+# EGL_NO_SURFACE fails once SDL2/KMSDRM owns the display. Force Dawn to create
+# a tiny pbuffer for its offscreen contexts and make that surface current.
+replace(
+    "src/dawn/native/opengl/ContextEGL.cpp",
+    """    // When EGL_KHR_surfaceless_context is not supported, we need to create a pbuffer to act
+    // as an offscreen surface.
+    if (!egl.HasExt(EGLExt::SurfacelessContext)) {
+""",
+    """    // R36S/Mali r13p0 advertises surfaceless contexts but rejects
+    // eglMakeCurrent(..., EGL_NO_SURFACE, ...) under SDL2/KMSDRM.
+    // Always use a 1x1 pbuffer on this target.
+#ifdef AURORA_R36S_OFFSCREEN
+    const bool forcePbuffer = true;
+#else
+    const bool forcePbuffer = false;
+#endif
+    if (forcePbuffer || !egl.HasExt(EGLExt::SurfacelessContext)) {
+""",
+)
+
+replace(
+    "src/dawn/native/opengl/ContextEGL.cpp",
+    """        mOffscreenSurface =
+            egl.CreatePbufferSurface(mDisplay->GetDisplay(), pbufferConfig, pbufferAttribs);
+        DAWN_TRY(
+            CheckEGL(egl, mOffscreenSurface != EGL_NO_SURFACE, "Creating the offscreen surface."));
+    }
+
+    return {};
+""",
+    """        mOffscreenSurface =
+            egl.CreatePbufferSurface(mDisplay->GetDisplay(), pbufferConfig, pbufferAttribs);
+        DAWN_TRY(
+            CheckEGL(egl, mOffscreenSurface != EGL_NO_SURFACE, "Creating the offscreen surface."));
+#ifdef AURORA_R36S_OFFSCREEN
+        mState.drawSurface = mOffscreenSurface;
+        mState.readSurface = mOffscreenSurface;
+#endif
+    }
+
+    return {};
+""",
+)
+
+print("Dawn legacy Mali adapter + forced pbuffer patch applied")
