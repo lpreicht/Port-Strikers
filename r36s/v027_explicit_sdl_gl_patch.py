@@ -43,6 +43,22 @@ if old not in s:
     raise SystemExit("window flags anchor not found")
 s = s.replace(old, new, 1)
 
+# KMSDRM needs a real panel mode for an EGL window surface. This target is
+# always the R36S 640x480 panel; do not request Aurora's desktop default 1280x960.
+old_size = """  Sint32 posX = g_config.windowPosX;
+"""
+new_size = """#ifdef AURORA_R36S_OFFSCREEN
+  width = 640;
+  height = 480;
+  Log.info("R36S V027 forcing native KMSDRM window mode {}x{}", width, height);
+#endif
+
+  Sint32 posX = g_config.windowPosX;
+"""
+if old_size not in s:
+    raise SystemExit("window position anchor not found")
+s = s.replace(old_size, new_size, 1)
+
 # Match the GLES context attributes used by the final Strikers/Melee SDL path.
 old = """  const auto props = SDL_CreateProperties();
   TRY(SDL_SetStringProperty(props, SDL_PROP_WINDOW_CREATE_TITLE_STRING, g_config.appName), "Failed to set {}: {}",
