@@ -120,7 +120,9 @@ jobs:
           python "$GITHUB_WORKSPACE/r36s/v027_explicit_sdl_gl_patch.py" "$PWD"
           python "$GITHUB_WORKSPACE/r36s/foxhollow_display_aspect_patch.py" "$PWD"
           python "$GITHUB_WORKSPACE/r36s/v029_low_memory_renderer_patch.py" "$PWD"
+          python "$GITHUB_WORKSPACE/r36s/v030_inline_render_worker_patch.py" "$PWD"
           grep -n -A10 'R36S V027 explicit SDL GLES context initialized' extern/aurora/lib/window.cpp || true
+          grep -n -A10 'R36S V030 render worker disabled' extern/aurora/lib/gfx/render_worker.cpp || true
           grep -n -A4 'FrameSlotCount' extern/aurora/lib/gfx/frame.hpp
           grep -n -E 'UniformBufferSize|VertexBufferSize|StorageBufferSize|TextureUploadSize' extern/aurora/lib/gfx/resources.hpp
           python "$GITHUB_WORKSPACE/r36s/direct_nod_dvd_patch.py" "$PWD"
@@ -238,12 +240,12 @@ jobs:
 
           {
             echo "R36S patch commit: $GITHUB_SHA"
-            echo "Port version: V029"
+            echo "Port version: V030"
             echo "Foxhollow commit: 29bcac7af9c1451d36f55d1159bc86d2584956dd"
             echo "Build container: quay.io/pypa/manylinux_2_28_aarch64"
             echo "Target: R36S ArkOS AeUX / aarch64 / glibc 2.30"
             echo "Default GameCube language: German (1)"
-            echo "Graphics backend: Aurora ARM CPU vertex decode + Dawn OpenGLES + V027 direct present + V029 low-memory frame streams; no R32Uint vertex-fetch path"
+            echo "Graphics backend: Aurora ARM CPU vertex decode + Dawn OpenGLES + V027 direct present + V029 low-memory streams + V030 inline main-thread render queue"
             echo "SDL: shared SDL3-to-system-SDL2 PortMaster shim 6057d79b (ArkOS KMSDRM + native ALSA)"
             echo "Audio queue: 120 ms (R36S underrun guard)"
             echo "DVD loader: direct nod path open (RVZ diagnostics enabled)"
@@ -266,3 +268,4 @@ jobs:
 # V027 consolidated build trigger: explicit SDL GL context instead of SDL_Renderer ownership
 # V028 consolidated build trigger: CPU vertex decode + complete Foxhollow API compatibility
 # V029 consolidated build trigger: R36S low-memory CPU-decode renderer profile
+# V030 consolidated build trigger: CPU vertex decode with inline main-thread renderer
