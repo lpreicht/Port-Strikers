@@ -241,3 +241,4 @@ jobs:
           path: artifact/
           if-no-files-found: error
 # V019 rebuild trigger: SDL renderer present path
+# V022 consolidated build trigger: SDL EGLDisplay reuse + forced Dawn pbuffer
