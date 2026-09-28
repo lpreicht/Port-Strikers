@@ -29,7 +29,6 @@ new = """void initialize() {
   g_running.store(false, std::memory_order_release);
   g_pendingItems.store(0, std::memory_order_release);
   g_queue.reset();
-  Log.info("R36S V030 render worker disabled: inline main-thread rendering");
   return;
 #else
   if (g_running.exchange(true, std::memory_order_acq_rel)) {
