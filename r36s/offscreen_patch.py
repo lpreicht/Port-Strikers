@@ -18,6 +18,22 @@ replace(
     "bool create_renderer();\nbool present_software_frame(const void* pixels, uint32_t width, uint32_t height, uint32_t pitch);\n",
 )
 
+# window.cpp: R36S SDL renderer presentation state.
+replace(
+    "extern/aurora/lib/window.cpp",
+    """SDL_Window* g_window;
+SDL_Renderer* g_renderer;
+""",
+    """SDL_Window* g_window;
+SDL_Renderer* g_renderer;
+#ifdef AURORA_R36S_OFFSCREEN
+SDL_Texture* g_r36sPresentTexture = nullptr;
+uint32_t g_r36sPresentWidth = 0;
+uint32_t g_r36sPresentHeight = 0;
+#endif
+""",
+)
+
 # window.cpp: don't reserve the Wayland window for an external GPU context in R36S offscreen mode.
 replace(
     "extern/aurora/lib/window.cpp",
