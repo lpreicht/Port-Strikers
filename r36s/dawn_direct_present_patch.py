@@ -84,5 +84,15 @@ GLuint GetGLInteropTexture(WGPUTexture texture) {
 """,
 )
 
+# Dawn renamed Texture::GetHandle() to GetTextureHandle() in the newer
+# Aurora-ARM dependency. Keep this patch compatible with both revisions.
+texture_header = (dawn / "src/dawn/native/opengl/TextureGL.h").read_text()
+if "GLuint GetTextureHandle() const;" in texture_header:
+    p = dawn / "src/dawn/native/opengl/OpenGLBackend.cpp"
+    text = p.read_text()
+    text = text.replace("return ToBackend(FromAPI(texture))->GetHandle();",
+                        "return ToBackend(FromAPI(texture))->GetTextureHandle();")
+    p.write_text(text)
+
 
 print("Dawn R36S interop applied; producer context unchanged")
