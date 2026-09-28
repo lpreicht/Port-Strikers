@@ -98,8 +98,8 @@ jobs:
             -DSDL_TESTS=OFF -DSDL_TEST_LIBRARY=OFF -DSDL_EXAMPLES=OFF -DSDL_INSTALL_DOCS=OFF
           cmake --build sdl3-shim-build --parallel 4
           cmake --install sdl3-shim-build
-          test -f sdl3-shim-install/lib/libSDL3.so.0
-          file sdl3-shim-install/lib/libSDL3.so.0
+          test -f sdl3-shim-install/lib64/libSDL3.so.0
+          file sdl3-shim-install/lib64/libSDL3.so.0
 
       - name: Fetch Foxhollow v1.0.4
         shell: bash
@@ -186,7 +186,7 @@ jobs:
           cp -L /lib64/libgcc_s.so.1 artifact/lib/libgcc_s.so.1
           cp -L build/_deps/png-build/libpng16.so.16 artifact/lib/libpng16.so.16
           cp -L /opt/_internal/sqlite3/lib/libsqlite3.so artifact/lib/libsqlite3.so
-          cp -L sdl3-shim-install/lib/libSDL3.so.0 artifact/lib/libSDL3.so.0
+          cp -L sdl3-shim-install/lib64/libSDL3.so.0 artifact/lib/libSDL3.so.0
 
           # Remove build-machine absolute paths and use libraries next to the port binary.
           patchelf --replace-needed /opt/_internal/sqlite3/lib/libsqlite3.so libsqlite3.so artifact/foxhollow.aarch64
