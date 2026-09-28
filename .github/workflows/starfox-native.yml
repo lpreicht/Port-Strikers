@@ -120,6 +120,7 @@ jobs:
           python "$GITHUB_WORKSPACE/r36s/v027_explicit_sdl_gl_patch.py" "$PWD"
           grep -n -A10 'R36S V027 explicit SDL GLES context initialized' extern/aurora/lib/window.cpp || true
           python "$GITHUB_WORKSPACE/r36s/direct_nod_dvd_patch.py" "$PWD"
+          python "$GITHUB_WORKSPACE/r36s/foxhollow_card_image_path_patch.py" "$PWD"
           python "$GITHUB_WORKSPACE/r36s/frame_profile_patch.py" "$PWD"
           python "$GITHUB_WORKSPACE/tests/test_present_contract.py" "$PWD/extern/aurora/lib/window.cpp"
           # R36S audio: Foxhollow's stock 40 ms queue underruns under RK3326 GPU/load spikes.
@@ -257,4 +258,4 @@ jobs:
 # V023 consolidated build trigger: direct GPU present order fix
 # V026 consolidated build trigger: release SDL window surface before Dawn/presenter ownership
 # V027 consolidated build trigger: explicit SDL GL context instead of SDL_Renderer ownership
-# V028 consolidated build trigger: Aurora ARM CPU vertex decode without R32Uint fetch
+# V028 consolidated build trigger: CPU vertex decode + Foxhollow memory-card API
