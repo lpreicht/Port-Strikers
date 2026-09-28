@@ -110,8 +110,8 @@ jobs:
           cd foxhollow-src
           git checkout 29bcac7af9c1451d36f55d1159bc86d2584956dd
           python "$GITHUB_WORKSPACE/r36s/offscreen_patch.py" "$PWD"
-          python "$GITHUB_WORKSPACE/r36s/direct_gl_present_patch.py" "$PWD"
           python "$GITHUB_WORKSPACE/r36s/gbm_adapter_patch.py" "$PWD"
+          python "$GITHUB_WORKSPACE/r36s/direct_gl_present_patch.py" "$PWD"
           python "$GITHUB_WORKSPACE/r36s/vertex_texture_patch.py" "$PWD"
           python "$GITHUB_WORKSPACE/r36s/direct_nod_dvd_patch.py" "$PWD"
           # R36S audio: Foxhollow's stock 40 ms queue underruns under RK3326 GPU/load spikes.
@@ -244,4 +244,4 @@ jobs:
           if-no-files-found: error
 # V019 rebuild trigger: SDL renderer present path
 # V022 consolidated build trigger: SDL EGLDisplay reuse + forced Dawn pbuffer
-# V023 consolidated build trigger: shared-context zero-readback GLES presenter
+# V023 consolidated build trigger: direct GPU present order fix
