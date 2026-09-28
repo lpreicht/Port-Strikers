@@ -81,10 +81,12 @@ bool present_gl_texture(uint32_t texture, uint32_t width, uint32_t height) {
   glWaitSync(ready, 0, GL_TIMEOUT_IGNORED);
   glDeleteSync(ready);
   bool ok = glIsTexture(texture);
+  bool attached = false;
   if (ok) {
     if (!g_r36sReadFbo) glGenFramebuffers(1, &g_r36sReadFbo);
     glBindFramebuffer(GL_READ_FRAMEBUFFER, g_r36sReadFbo);
     glFramebufferTexture2D(GL_READ_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture, 0);
+    attached = true;
     ok = glCheckFramebufferStatus(GL_READ_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE;
   }
   if (ok) {
@@ -95,8 +97,13 @@ bool present_gl_texture(uint32_t texture, uint32_t width, uint32_t height) {
                       g_windowSize.native_fb_width, 0, GL_COLOR_BUFFER_BIT, GL_LINEAR);
     ok = glGetError() == GL_NO_ERROR;
   }
-  glFramebufferTexture2D(GL_READ_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, 0, 0);
+  if (attached)
+    glFramebufferTexture2D(GL_READ_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, 0, 0);
   glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
+  for (GLenum error = glGetError(); error != GL_NO_ERROR; error = glGetError()) {
+    Log.error("R36S V025 presenter GL error: 0x{:x}", static_cast<unsigned>(error));
+    ok = false;
+  }
   GLsync consumed = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
   glFlush();
   if (!consumed) {

@@ -51,12 +51,15 @@ bool SDL_GL_SwapWindow(void*){if(swapFails || currentContext!=g_r36sPresentConte
 const char* SDL_GetError(){return "test";}
 GLsync glFenceSync(int,int){return (void*)30;}
 bool glIsTexture(GLuint){return visible;}
-GLenum glGetError(){return 0;}
+int readBinding=0; GLenum glError=0;
+GLenum glGetError(){auto e=glError;glError=0;return e;}
+void glBindFramebuffer(int target,unsigned id){if(target==GL_READ_FRAMEBUFFER)readBinding=id;}
+void glFramebufferTexture2D(int,int,int,unsigned,int){if(!readBinding)glError=0x502;}
 int glCheckFramebufferStatus(int){return GL_FRAMEBUFFER_COMPLETE;}
 #define NOOP(name) template<class... T> void name(T...) {}
 NOOP(glViewport) NOOP(glDisable) NOOP(glColorMask) NOOP(glUseProgram)
 NOOP(glBindVertexArray) NOOP(glActiveTexture) NOOP(glBindTexture) NOOP(glBindSampler)
-NOOP(glDrawArrays) NOOP(glBindFramebuffer) NOOP(glFramebufferTexture2D)
+NOOP(glDrawArrays)
 NOOP(glGenFramebuffers) NOOP(glBlitFramebuffer) NOOP(glWaitSync) NOOP(glDeleteSync) NOOP(glFlush)
 '''
 checks = r'''
@@ -67,6 +70,8 @@ int main(int argc, char** argv) {
   if(!swapFails && (!ok || flips!=1)){std::fprintf(stderr,"missing SDL/KMSDRM page flip: %d\n",flips);return 1;}
   if(currentContext!=(void*)20 || currentDraw!=(void*)21 || currentRead!=(void*)22){std::fprintf(stderr,"producer EGL state was not restored\n");return 1;}
   if(!swapFails && (!present_gl_texture(42,640,480) || flips!=2)){std::fprintf(stderr,"second frame lost current context\n");return 1;}
+  visible=false;
+  if(present_gl_texture(42,640,480) || glGetError()!=0){std::fprintf(stderr,"invalid shared texture polluted fallback GL state\n");return 1;}
   return 0;
 }
 '''
