@@ -299,6 +299,63 @@ replace(
 """,
 )
 
+# aurora.cpp: on R36S create the SDL2/KMSDRM renderer before Dawn so the working
+# firmware EGLDisplay is current and can be reused by Dawn instead of opening card0 twice.
+replace(
+    "extern/aurora/lib/aurora.cpp",
+    """  if (selectedBackend != BACKEND_AUTO && window::create_window(selectedBackend)) {
+    if (webgpu::initialize(selectedBackend, config.allowCpuAdapter)) {
+      windowCreated = true;
+    } else {
+      window::destroy_window();
+    }
+  }
+""",
+    """  if (selectedBackend != BACKEND_AUTO && window::create_window(selectedBackend)) {
+#ifdef AURORA_R36S_OFFSCREEN
+    if (!window::create_renderer()) {
+      window::destroy_window();
+    } else
+#endif
+    if (webgpu::initialize(selectedBackend, config.allowCpuAdapter)) {
+      windowCreated = true;
+    } else {
+      window::destroy_window();
+    }
+  }
+""",
+)
+
+replace(
+    "extern/aurora/lib/aurora.cpp",
+    """      if (!window::create_window(selectedBackend)) {
+        continue;
+      }
+      if (webgpu::initialize(selectedBackend, config.allowCpuAdapter)) {
+        windowCreated = true;
+        break;
+      } else {
+        window::destroy_window();
+      }
+""",
+    """      if (!window::create_window(selectedBackend)) {
+        continue;
+      }
+#ifdef AURORA_R36S_OFFSCREEN
+      if (!window::create_renderer()) {
+        window::destroy_window();
+        continue;
+      }
+#endif
+      if (webgpu::initialize(selectedBackend, config.allowCpuAdapter)) {
+        windowCreated = true;
+        break;
+      } else {
+        window::destroy_window();
+      }
+""",
+)
+
 # aurora.cpp: initialize the SDL renderer even though the selected GPU backend is OpenGLES.
 replace(
     "extern/aurora/lib/aurora.cpp",
@@ -311,11 +368,9 @@ replace(
 """,
     """  AURORA_ASSERT(windowCreated, "Error creating window: {}", SDL_GetError());
 
-#ifdef AURORA_R36S_OFFSCREEN
-  // Dawn renders to an offscreen texture; SDL only presents the CPU readback.
-  AURORA_ASSERT(window::create_renderer(), "Failed to initialize R36S SDL renderer: {}", SDL_GetError());
-#else
-  // Initialize SDL_Renderer for ImGui when we can't use a Dawn backend
+#ifndef AURORA_R36S_OFFSCREEN
+  // Initialize SDL_Renderer for ImGui when we can't use a Dawn backend.
+  // R36S creates its KMSDRM renderer before Dawn so Dawn can reuse SDL's EGLDisplay.
   if (webgpu::g_backendType == wgpu::BackendType::Null) {
     AURORA_ASSERT(window::create_renderer(), "Failed to initialize SDL renderer: {}", SDL_GetError());
   }
