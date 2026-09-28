@@ -64,6 +64,7 @@ jobs:
           python "$GITHUB_WORKSPACE/r36s/offscreen_patch.py" "$PWD"
           python "$GITHUB_WORKSPACE/r36s/gbm_adapter_patch.py" "$PWD"
           python "$GITHUB_WORKSPACE/r36s/vertex_texture_patch.py" "$PWD"
+          python "$GITHUB_WORKSPACE/r36s/direct_nod_dvd_patch.py" "$PWD"
           # PAL R36S build: default the emulated GameCube system language to German.
           sed -i 's/static u8 sLanguage;/static u8 sLanguage = 1;/' port/src/os_shim.c
           grep -n 'static u8 sLanguage' port/src/os_shim.c
@@ -164,6 +165,7 @@ jobs:
             echo "Target: R36S ArkOS AeUX / aarch64 / glibc 2.30"
             echo "Default GameCube language: German (1)"
             echo "Graphics backend: Dawn OpenGLES direct GBM/EGL + R32Uint vertex texture fetch + offscreen SDL present"
+            echo "DVD loader: direct nod path open (RVZ diagnostics enabled)"
             echo "Highest executable GLIBC symbol: ${HIGHEST:-none}"
             echo "Runtime path: \$ORIGIN/../lib"
           } > artifact/BUILD_INFO.txt
