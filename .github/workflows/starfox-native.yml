@@ -71,7 +71,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: sdl3-shim-install
-          key: starfox-r36s-sdl3shim-6057d79b-v1
+          key: starfox-r36s-sdl3shim-6057d79b-v2-native-alsa
 
       - name: Build PortMaster SDL3-to-SDL2 shim
         if: steps.sdl3-shim-cache.outputs.cache-hit != 'true'
@@ -90,7 +90,8 @@ jobs:
             -DSDL_SDL2_BACKEND=ON -DSDL_UNIX_CONSOLE_BUILD=ON \
             -DSDL_X11=OFF -DSDL_WAYLAND=OFF -DSDL_KMSDRM=OFF \
             -DSDL_OFFSCREEN=OFF -DSDL_DUMMYVIDEO=OFF \
-            -DSDL_PIPEWIRE=OFF -DSDL_PULSEAUDIO=OFF -DSDL_ALSA=OFF \
+            -DSDL_PIPEWIRE=OFF -DSDL_PULSEAUDIO=OFF \
+            -DSDL_ALSA=ON -DSDL_ALSA_SHARED=ON -DSDL_DEPS_SHARED=ON \
             -DSDL_SNDIO=OFF -DSDL_OSS=OFF -DSDL_JACK=OFF \
             -DSDL_DUMMYAUDIO=OFF -DSDL_DISKAUDIO=OFF \
             -DSDL_VULKAN=OFF -DSDL_OPENGL=OFF -DSDL_OPENGLES=ON \
@@ -112,6 +113,10 @@ jobs:
           python "$GITHUB_WORKSPACE/r36s/gbm_adapter_patch.py" "$PWD"
           python "$GITHUB_WORKSPACE/r36s/vertex_texture_patch.py" "$PWD"
           python "$GITHUB_WORKSPACE/r36s/direct_nod_dvd_patch.py" "$PWD"
+          # R36S audio: Foxhollow's stock 40 ms queue underruns under RK3326 GPU/load spikes.
+          # Use the conservative 120 ms queue together with the native-ALSA SDL3 shim path.
+          sed -i 's/#define AI_OUTPUT_QUEUE_MS 40/#define AI_OUTPUT_QUEUE_MS 120/' port/src/ai_shim.c
+          grep -n 'AI_OUTPUT_QUEUE_MS' port/src/ai_shim.c
           # PAL R36S build: default the emulated GameCube system language to German.
           sed -i 's/static u8 sLanguage;/static u8 sLanguage = 1;/' port/src/os_shim.c
           grep -n 'static u8 sLanguage' port/src/os_shim.c
@@ -220,7 +225,8 @@ jobs:
             echo "Target: R36S ArkOS AeUX / aarch64 / glibc 2.30"
             echo "Default GameCube language: German (1)"
             echo "Graphics backend: Dawn OpenGLES direct GBM/EGL + R32Uint vertex texture fetch + offscreen SDL present"
-            echo "SDL: shared SDL3-to-system-SDL2 PortMaster shim 6057d79b (ArkOS KMSDRM)"
+            echo "SDL: shared SDL3-to-system-SDL2 PortMaster shim 6057d79b (ArkOS KMSDRM + native ALSA)"
+            echo "Audio queue: 120 ms (R36S underrun guard)"
             echo "DVD loader: direct nod path open (RVZ diagnostics enabled)"
             echo "Highest executable GLIBC symbol: ${HIGHEST:-none}"
             echo "Runtime path: \$ORIGIN/../lib"
