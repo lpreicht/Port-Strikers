@@ -398,15 +398,23 @@ replace(
 """,
 )
 
+# Aurora logger syntax changed in the ARM performance fork.
+p = root / "extern/aurora/lib/aurora.cpp"
+_aurora = p.read_text()
+if 'Module Log("aurora");\n\n#ifdef AURORA_ENABLE_GX' in _aurora:
+    _logger_anchor = 'Module Log("aurora");'
+    _logger_replacement = 'Module Log("aurora");'
+elif 'constexpr Module Log{"aurora"};\n\n#ifdef AURORA_ENABLE_GX' in _aurora:
+    _logger_anchor = 'constexpr Module Log{"aurora"};'
+    _logger_replacement = 'constexpr Module Log{"aurora"};'
+else:
+    raise SystemExit("aurora.cpp logger anchor not found")
+
 replace(
     "extern/aurora/lib/aurora.cpp",
-    """Module Log("aurora");
-
-#ifdef AURORA_ENABLE_GX
+    _logger_anchor + """\n\n#ifdef AURORA_ENABLE_GX
 """,
-    """Module Log("aurora");
-
-#ifdef AURORA_R36S_OFFSCREEN
+    _logger_replacement + """\n\n#ifdef AURORA_R36S_OFFSCREEN
 std::mutex g_r36sFrameMutex;
 std::vector<uint8_t> g_r36sFrame;
 uint32_t g_r36sFrameWidth = 0;
