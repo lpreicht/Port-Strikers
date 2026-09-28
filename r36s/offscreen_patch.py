@@ -364,8 +364,8 @@ replace(
     }
 
     webgpu::gpu_prof::frame_end(encoder);
-    const wgpu::CommandBufferDescriptor cmdBufDescriptor{.label = "R36S offscreen redraw command buffer"};
-    const auto commandBuffer = encoder.Finish(&cmdBufDescriptor);
+    const wgpu::CommandBufferDescriptor r36sCmdBufDescriptor{.label = "R36S offscreen redraw command buffer"};
+    const auto commandBuffer = encoder.Finish(&r36sCmdBufDescriptor);
     g_queue.Submit(1, &commandBuffer);
     webgpu::gpu_prof::after_submit();
 
@@ -373,7 +373,7 @@ replace(
       readbackBuffer.MapAsync(
           wgpu::MapMode::Read, 0, byteSize, wgpu::CallbackMode::AllowSpontaneous,
           [readbackBuffer, width, height, bytesPerRow, byteSize](wgpu::MapAsyncStatus status,
-                                                                 wgpu::StringView message) mutable {
+                                                                 wgpu::StringView message) {
             if (status == wgpu::MapAsyncStatus::Success) {
               const auto* srcPixels =
                   static_cast<const uint8_t*>(readbackBuffer.GetConstMappedRange(0, byteSize));
