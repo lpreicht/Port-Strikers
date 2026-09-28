@@ -178,3 +178,4 @@ jobs:
           name: foxhollow-r36s-aarch64
           path: artifact/
           if-no-files-found: error
+# V019 rebuild trigger: SDL renderer present path
