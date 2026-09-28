@@ -90,7 +90,7 @@ jobs:
             -DDAWN_ENABLE_VULKAN=OFF \
             -DDAWN_ENABLE_DESKTOP_GL=OFF \
             -DDAWN_ENABLE_OPENGLES=ON \
-            -DDAWN_USE_WAYLAND=OFF \
+            -DDAWN_USE_WAYLAND=ON \
             -DAURORA_SDL3_PROVIDER=vendor \
             -DAURORA_SDL3_LINKAGE=static \
             -DAURORA_NOD_PROVIDER=vendor \
@@ -150,7 +150,7 @@ jobs:
             echo "Build container: quay.io/pypa/manylinux_2_28_aarch64"
             echo "Target: R36S ArkOS AeUX / aarch64 / glibc 2.30"
             echo "Default GameCube language: German (1)"
-            echo "Graphics backend: Dawn OpenGLES only (Vulkan disabled)"
+            echo "Graphics backend: Dawn OpenGLES only (Vulkan disabled, Wayland surface enabled)"
             echo "Highest executable GLIBC symbol: ${HIGHEST:-none}"
             echo "Runtime path: \$ORIGIN/../lib"
           } > artifact/BUILD_INFO.txt
