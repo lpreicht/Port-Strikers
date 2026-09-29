@@ -178,6 +178,7 @@ jobs:
             -DAURORA_NOD_LINKAGE=static \
             -DAURORA_VERTEX_BUFFER_MIB=8 \
             -DAURORA_GLES_DIRECT=ON \
+            -DAURORA_GLES_DIRECT_DAWN_INCLUDE_DIR="$GITHUB_WORKSPACE/build/_deps/dawn-src/include" \
             -DAURORA_UNIFORM_WINDOW_KIB=16
 
       - name: Patch Dawn for RK3326 legacy Mali EGL
@@ -203,6 +204,7 @@ jobs:
             -DAURORA_NOD_LINKAGE=static \
             -DAURORA_VERTEX_BUFFER_MIB=8 \
             -DAURORA_GLES_DIRECT=ON \
+            -DAURORA_GLES_DIRECT_DAWN_INCLUDE_DIR="$GITHUB_WORKSPACE/build/_deps/dawn-src/include" \
             -DAURORA_UNIFORM_WINDOW_KIB=16
           grep -R "OpenGL ES direct submission enabled" "$GITHUB_WORKSPACE/build/CMakeFiles" "$GITHUB_WORKSPACE/build" 2>/dev/null | head -5 || true
           grep -n -A18 'AppendNewDeviceFrom' "$GITHUB_WORKSPACE/build/_deps/dawn-src/src/dawn/native/opengl/BackendGL.cpp" | head -30
@@ -301,3 +303,4 @@ jobs:
 # V032 consolidated build trigger: unconditional sync map-load breadcrumbs in C
 # V033 consolidated build trigger: restore full V027 DVD sync/callback semantics
 # V034 consolidated build trigger: direct GLES GX submission on Mali-G31
+# V034 direct GLES activation fix: explicit patched Dawn include path
