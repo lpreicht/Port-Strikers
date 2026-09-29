@@ -140,20 +140,44 @@ s = one(
     "DVDReadAsyncPrio conditional callback",
 )
 
-s = one(
-    s,
-    "  s_worker.wait(&fileInfo->cb);\n  const s32 state = atomic_load_acquire(fileInfo->cb.state);\n",
-    "  fprintf(stderr, \"[R36S V033 dvd] DVDReadPrio wait begin len=%d off=%d\\n\", (int)length, (int)offset);\n"
-    "  fflush(stderr);\n"
-    "  s_worker.wait(&fileInfo->cb);\n"
-    "  fprintf(stderr, \"[R36S V033 dvd] DVDReadPrio wait end state=%d transferred=%u\\n\",\n"
-    "          (int)atomic_load_acquire(fileInfo->cb.state),\n"
-    "          (unsigned)atomic_load_relaxed(fileInfo->cb.transferredSize));\n"
-    "  fflush(stderr);\n"
-    "  processPendingCallbacks();\n"
-    "  const s32 state = atomic_load_acquire(fileInfo->cb.state);\n",
-    "DVDReadPrio pending pump",
-)
+old_read_prio = r'''s32 DVDReadPrio(DVDFileInfo* fileInfo, void* addr, s32 length, s32 offset, s32 prio) {
+  if (!DVDReadAsyncPrio(fileInfo, addr, length, offset, nullptr, prio)) {
+    return DVD_RESULT_FATAL_ERROR;
+  }
+  s_worker.wait(&fileInfo->cb);
+  const s32 state = atomic_load_acquire(fileInfo->cb.state);
+  if (state == DVD_STATE_END) {
+    return static_cast<s32>(atomic_load_relaxed(fileInfo->cb.transferredSize));
+  }
+  if (state == DVD_STATE_CANCELED) {
+    return DVD_RESULT_CANCELED;
+  }
+  return DVD_RESULT_FATAL_ERROR;
+}
+'''
+new_read_prio = r'''s32 DVDReadPrio(DVDFileInfo* fileInfo, void* addr, s32 length, s32 offset, s32 prio) {
+  if (!DVDReadAsyncPrio(fileInfo, addr, length, offset, nullptr, prio)) {
+    return DVD_RESULT_FATAL_ERROR;
+  }
+  fprintf(stderr, "[R36S V033 dvd] DVDReadPrio wait begin len=%d off=%d\n", (int)length, (int)offset);
+  fflush(stderr);
+  s_worker.wait(&fileInfo->cb);
+  fprintf(stderr, "[R36S V033 dvd] DVDReadPrio wait end state=%d transferred=%u\n",
+          (int)atomic_load_acquire(fileInfo->cb.state),
+          (unsigned)atomic_load_relaxed(fileInfo->cb.transferredSize));
+  fflush(stderr);
+  processPendingCallbacks();
+  const s32 state = atomic_load_acquire(fileInfo->cb.state);
+  if (state == DVD_STATE_END) {
+    return static_cast<s32>(atomic_load_relaxed(fileInfo->cb.transferredSize));
+  }
+  if (state == DVD_STATE_CANCELED) {
+    return DVD_RESULT_CANCELED;
+  }
+  return DVD_RESULT_FATAL_ERROR;
+}
+'''
+s = one(s, old_read_prio, new_read_prio, "DVDReadPrio V027 semantics")
 
 s = one(
     s,
@@ -162,12 +186,38 @@ s = one(
     "DVDSeekAsyncPrio conditional callback",
 )
 
-s = one(
-    s,
-    "  s_worker.wait(&fileInfo->cb);\n  const s32 state = atomic_load_acquire(fileInfo->cb.state);\n",
-    "  s_worker.wait(&fileInfo->cb);\n  processPendingCallbacks();\n  const s32 state = atomic_load_acquire(fileInfo->cb.state);\n",
-    "DVDSeekPrio pending pump",
-)
+old_seek_prio = r'''s32 DVDSeekPrio(DVDFileInfo* fileInfo, s32 offset, s32 prio) {
+  if (!DVDSeekAsyncPrio(fileInfo, offset, nullptr, prio)) {
+    return DVD_RESULT_FATAL_ERROR;
+  }
+  s_worker.wait(&fileInfo->cb);
+  const s32 state = atomic_load_acquire(fileInfo->cb.state);
+  if (state == DVD_STATE_END) {
+    return DVD_RESULT_GOOD;
+  }
+  if (state == DVD_STATE_CANCELED) {
+    return DVD_RESULT_CANCELED;
+  }
+  return DVD_RESULT_FATAL_ERROR;
+}
+'''
+new_seek_prio = r'''s32 DVDSeekPrio(DVDFileInfo* fileInfo, s32 offset, s32 prio) {
+  if (!DVDSeekAsyncPrio(fileInfo, offset, nullptr, prio)) {
+    return DVD_RESULT_FATAL_ERROR;
+  }
+  s_worker.wait(&fileInfo->cb);
+  processPendingCallbacks();
+  const s32 state = atomic_load_acquire(fileInfo->cb.state);
+  if (state == DVD_STATE_END) {
+    return DVD_RESULT_GOOD;
+  }
+  if (state == DVD_STATE_CANCELED) {
+    return DVD_RESULT_CANCELED;
+  }
+  return DVD_RESULT_FATAL_ERROR;
+}
+'''
+s = one(s, old_seek_prio, new_seek_prio, "DVDSeekPrio V027 semantics")
 
 s = one(
     s,
