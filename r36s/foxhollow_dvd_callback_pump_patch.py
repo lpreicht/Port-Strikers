@@ -129,6 +129,60 @@ void aurora_dvd_process_callbacks(void) {
 '''
 s = one(s, extern_anchor, extern_insert, "extern C pump")
 
+
+# Restore the remaining Foxhollow/V027 synchronous DVD semantics that Aurora ARM
+# dropped. Synchronous calls must not install wrapper callbacks, and after a
+# blocking wait Foxhollow immediately drains any deferred completions.
+s = one(
+    s,
+    "  DVDReadAbsAsyncPrio(&fileInfo->cb, addr, length, offset, cbForReadAsync, prio);\n",
+    "  DVDReadAbsAsyncPrio(&fileInfo->cb, addr, length, offset, callback != nullptr ? cbForReadAsync : nullptr, prio);\n",
+    "DVDReadAsyncPrio conditional callback",
+)
+
+s = one(
+    s,
+    "  s_worker.wait(&fileInfo->cb);\n  const s32 state = atomic_load_acquire(fileInfo->cb.state);\n",
+    "  fprintf(stderr, \"[R36S V033 dvd] DVDReadPrio wait begin len=%d off=%d\\n\", (int)length, (int)offset);\n"
+    "  fflush(stderr);\n"
+    "  s_worker.wait(&fileInfo->cb);\n"
+    "  fprintf(stderr, \"[R36S V033 dvd] DVDReadPrio wait end state=%d transferred=%u\\n\",\n"
+    "          (int)atomic_load_acquire(fileInfo->cb.state),\n"
+    "          (unsigned)atomic_load_relaxed(fileInfo->cb.transferredSize));\n"
+    "  fflush(stderr);\n"
+    "  processPendingCallbacks();\n"
+    "  const s32 state = atomic_load_acquire(fileInfo->cb.state);\n",
+    "DVDReadPrio pending pump",
+)
+
+s = one(
+    s,
+    "  DVDSeekAbsAsyncPrio(&fileInfo->cb, offset, cbForSeekAsync, prio);\n",
+    "  DVDSeekAbsAsyncPrio(&fileInfo->cb, offset, callback != nullptr ? cbForSeekAsync : nullptr, prio);\n",
+    "DVDSeekAsyncPrio conditional callback",
+)
+
+s = one(
+    s,
+    "  s_worker.wait(&fileInfo->cb);\n  const s32 state = atomic_load_acquire(fileInfo->cb.state);\n",
+    "  s_worker.wait(&fileInfo->cb);\n  processPendingCallbacks();\n  const s32 state = atomic_load_acquire(fileInfo->cb.state);\n",
+    "DVDSeekPrio pending pump",
+)
+
+s = one(
+    s,
+    "  return DVDPrepareStreamAbsAsync(&fileInfo->cb, length, offset, cbForPrepareStreamAsync);\n",
+    "  return DVDPrepareStreamAbsAsync(&fileInfo->cb, length, offset, callback != nullptr ? cbForPrepareStreamAsync : nullptr);\n",
+    "DVDPrepareStreamAsync conditional callback",
+)
+
+s = one(
+    s,
+    "s32 DVDGetDriveStatus(void) { return s_initialized ? DVD_STATE_END : DVD_STATE_NO_DISK; }\n",
+    "s32 DVDGetDriveStatus(void) {\n  processPendingCallbacks();\n  return s_initialized ? DVD_STATE_END : DVD_STATE_NO_DISK;\n}\n",
+    "DVDGetDriveStatus callback pump",
+)
+
 header_anchor = "void aurora_dvd_close(void);\n"
 header_insert = r'''void aurora_dvd_close(void);
 
