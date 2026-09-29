@@ -48,9 +48,11 @@ replace('extern/aurora/lib/window.cpp', 'void destroy_window() {\n', '''void des
 replace('CMakeLists.txt', '        EGL\n        gbm\n', '        EGL\n        gbm\n        GLESv2\n')
 replace('extern/aurora/lib/aurora.cpp', '#include <atomic>\n',
         '#include <atomic>\n#include <cstdlib>\n#include <dawn/native/OpenGLBackend.h>\n')
-replace('extern/aurora/lib/aurora.cpp',
-        '#ifdef AURORA_R36S_OFFSCREEN\n    const auto& source = webgpu::present_source();',
-        '''#ifdef AURORA_R36S_OFFSCREEN
+p = root / 'extern/aurora/lib/aurora.cpp'
+_aurora = p.read_text()
+_legacy_anchor = '#ifdef AURORA_R36S_OFFSCREEN\n    const auto& source = webgpu::present_source();'
+if _legacy_anchor in _aurora:
+    _legacy_new = '''#ifdef AURORA_R36S_OFFSCREEN
     static bool directPresent = [] {
       const char* value = std::getenv("FOXHOLLOW_PRESENT");
       return !value || std::strcmp(value, "readback") != 0;
@@ -77,5 +79,43 @@ replace('extern/aurora/lib/aurora.cpp',
       gfx::after_submit();
       return;
     }
-    const auto& source = webgpu::present_source();''')
+    const auto& source = webgpu::present_source();'''
+    p.write_text(_aurora.replace(_legacy_anchor, _legacy_new, 1))
+else:
+    # Aurora direct-GLES branch: hook the new end-frame callback before it tries
+    # to acquire a WebGPU surface. The R36S remains offscreen in Dawn; GX render
+    # passes execute through gles_direct during Submit, then our shared-context
+    # KMSDRM presenter blits the completed EFB texture.
+    _new_anchor = '''  finish_frame([rmlBindGroup = std::move(rmlBindGroup), rmlOverlay, viewport, imguiDrawData = std::move(imguiDrawData)](
+                   wgpu::CommandEncoder& encoder, std::vector<gfx::AfterSubmitCallback> afterSubmitCallbacks) {
+'''
+    if _new_anchor not in _aurora:
+        raise SystemExit("direct-GLES Aurora end-frame lambda anchor not found")
+    _new_block = _new_anchor + '''#ifdef AURORA_R36S_OFFSCREEN
+    const auto& source = webgpu::present_source();
+    webgpu::gpu_prof::frame_end(encoder);
+    const wgpu::CommandBufferDescriptor r36sCmdDesc{.label = "R36S direct-GLES command buffer"};
+    const auto commandBuffer = encoder.Finish(&r36sCmdDesc);
+    gfx::gles_direct::install_frame();
+    g_queue.Submit(1, &commandBuffer);
+    gfx::gles_direct::uninstall_frame();
+    webgpu::gpu_prof::after_submit();
+
+    struct Present { uint32_t texture, width, height; bool ok; };
+    Present present{dawn::native::opengl::GetGLInteropTexture(source.texture.Get()),
+                    source.size.width, source.size.height, false};
+    const bool submitted = dawn::native::opengl::RunGLInterop(g_device.Get(), [](void* userdata) {
+      auto& p = *static_cast<Present*>(userdata);
+      p.ok = window::present_gl_texture(p.texture, p.width, p.height);
+    }, &present);
+    if (!submitted || !present.ok) {
+      Log.error("R36S V034 direct-GLES present failed");
+    }
+    gfx::after_present();
+    for (auto& callback : afterSubmitCallbacks) if (callback) callback();
+    gfx::after_submit();
+    return;
+#endif
+'''
+    p.write_text(_aurora.replace(_new_anchor, _new_block, 1))
 print('R36S V025 SDL scanout + producer-shared fenced presenter applied')
