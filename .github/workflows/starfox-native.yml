@@ -241,12 +241,12 @@ jobs:
 
           {
             echo "R36S patch commit: $GITHUB_SHA"
-            echo "Port version: V031"
+            echo "Port version: V032"
             echo "Foxhollow commit: 29bcac7af9c1451d36f55d1159bc86d2584956dd"
             echo "Build container: quay.io/pypa/manylinux_2_28_aarch64"
             echo "Target: R36S ArkOS AeUX / aarch64 / glibc 2.30"
             echo "Default GameCube language: German (1)"
-            echo "Graphics backend: Aurora ARM CPU vertex decode + Dawn OpenGLES + V027 direct present + V029 low-memory streams + V030 inline renderer + V031 synchronous initial map-load diagnostics"
+            echo "Graphics backend: Aurora ARM CPU vertex decode + Dawn OpenGLES + V027 direct present + V029 low-memory streams + V030 inline renderer + V032 unconditional synchronous initial map-load diagnostics"
             echo "SDL: shared SDL3-to-system-SDL2 PortMaster shim 6057d79b (ArkOS KMSDRM + native ALSA)"
             echo "Audio queue: 120 ms (R36S underrun guard)"
             echo "DVD loader: direct nod path open (RVZ diagnostics enabled)"
@@ -271,3 +271,4 @@ jobs:
 # V029 consolidated build trigger: R36S low-memory CPU-decode renderer profile
 # V030 consolidated build trigger: CPU vertex decode with inline main-thread renderer
 # V031 consolidated build trigger: synchronous initial map resources + breadcrumbs
+# V032 consolidated build trigger: unconditional sync map-load breadcrumbs in C
