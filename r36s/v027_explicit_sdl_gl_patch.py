@@ -169,11 +169,28 @@ if old not in s:
 s = s.replace(old, new, 1)
 
 # Destroy the explicit SDL context on shutdown if direct presentation remained active.
-needle = """  if (g_window != nullptr) {
+legacy_window_destroy = """  if (g_window != nullptr) {
     SDL_DestroyWindow(g_window);
     g_window = nullptr;
   }
 """
+direct_window_destroy = """  if (g_window != nullptr) {
+    if (!g_windowExternal) {
+      SDL_DestroyWindow(g_window);
+    }
+    g_window = nullptr;
+    g_windowExternal = false;
+  }
+"""
+if direct_window_destroy in s:
+    needle = direct_window_destroy
+    window_tail = direct_window_destroy
+elif legacy_window_destroy in s:
+    needle = legacy_window_destroy
+    window_tail = legacy_window_destroy
+else:
+    raise SystemExit("destroy window anchor not found")
+
 replacement = """#ifdef AURORA_R36S_OFFSCREEN
   if (g_r36sWindowContext != nullptr) {
     SDL_GL_MakeCurrent(g_window, nullptr);
@@ -181,13 +198,7 @@ replacement = """#ifdef AURORA_R36S_OFFSCREEN
     g_r36sWindowContext = nullptr;
   }
 #endif
-  if (g_window != nullptr) {
-    SDL_DestroyWindow(g_window);
-    g_window = nullptr;
-  }
-"""
-if needle not in s:
-    raise SystemExit("destroy window anchor not found")
+""" + window_tail
 s = s.replace(needle, replacement, 1)
 
 p.write_text(s)
