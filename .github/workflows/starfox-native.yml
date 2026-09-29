@@ -229,7 +229,14 @@ jobs:
           cp -L /lib64/libz.so.1 artifact/lib/libz.so.1
           cp -L /lib64/libstdc++.so.6 artifact/lib/libstdc++.so.6
           cp -L /lib64/libgcc_s.so.1 artifact/lib/libgcc_s.so.1
-          cp -L build/_deps/png-build/libpng16.so.16 artifact/lib/libpng16.so.16
+          PNG_LIB="$(find build /usr/lib64 /lib64 -type f -name 'libpng16.so.16*' -o -type l -name 'libpng16.so.16*' 2>/dev/null | head -1)"
+          if [ -z "$PNG_LIB" ]; then
+            echo "ERROR: libpng16.so.16 not found"
+            find build/_deps -maxdepth 4 -iname '*png*' -o -iname 'libpng*' | head -100 || true
+            exit 1
+          fi
+          echo "Bundling libpng from: $PNG_LIB"
+          cp -L "$PNG_LIB" artifact/lib/libpng16.so.16
           cp -L /opt/_internal/sqlite3/lib/libsqlite3.so artifact/lib/libsqlite3.so
           cp -L sdl3-shim-install/lib64/libSDL3.so.0 artifact/lib/libSDL3.so.0
 
