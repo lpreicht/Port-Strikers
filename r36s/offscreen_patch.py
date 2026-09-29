@@ -19,20 +19,32 @@ replace(
 )
 
 # window.cpp: R36S SDL renderer presentation state.
-replace(
-    "extern/aurora/lib/window.cpp",
-    """SDL_Window* g_window;
-SDL_Renderer* g_renderer;
-""",
-    """SDL_Window* g_window;
+p = root / "extern/aurora/lib/window.cpp"
+_window = p.read_text()
+if "SDL_Window* g_window;\nbool g_windowExternal = false; // g_window belongs to the application, not to Aurora\nSDL_Renderer* g_renderer;\n" in _window:
+    _window_state = "SDL_Window* g_window;\nbool g_windowExternal = false; // g_window belongs to the application, not to Aurora\nSDL_Renderer* g_renderer;\n"
+    _window_state_new = """SDL_Window* g_window;
+bool g_windowExternal = false; // g_window belongs to the application, not to Aurora
 SDL_Renderer* g_renderer;
 #ifdef AURORA_R36S_OFFSCREEN
 SDL_Texture* g_r36sPresentTexture = nullptr;
 uint32_t g_r36sPresentWidth = 0;
 uint32_t g_r36sPresentHeight = 0;
 #endif
-""",
-)
+"""
+else:
+    _window_state = "SDL_Window* g_window;\nSDL_Renderer* g_renderer;\n"
+    _window_state_new = """SDL_Window* g_window;
+SDL_Renderer* g_renderer;
+#ifdef AURORA_R36S_OFFSCREEN
+SDL_Texture* g_r36sPresentTexture = nullptr;
+uint32_t g_r36sPresentWidth = 0;
+uint32_t g_r36sPresentHeight = 0;
+#endif
+"""
+if _window_state not in _window:
+    raise SystemExit("window presentation state anchor not found")
+p.write_text(_window.replace(_window_state, _window_state_new, 1))
 
 # window.cpp: don't reserve the Wayland window for an external GPU context in R36S offscreen mode.
 replace(
