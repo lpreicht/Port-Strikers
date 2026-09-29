@@ -120,6 +120,7 @@ jobs:
           python "$GITHUB_WORKSPACE/r36s/v027_explicit_sdl_gl_patch.py" "$PWD"
           python "$GITHUB_WORKSPACE/r36s/foxhollow_display_aspect_patch.py" "$PWD"
           python "$GITHUB_WORKSPACE/r36s/v034_direct_gles_profile_patch.py" "$PWD"
+          python "$GITHUB_WORKSPACE/r36s/v035_zero_vertex_storage_limit_patch.py" "$PWD"
           python "$GITHUB_WORKSPACE/r36s/v030_inline_render_worker_patch.py" "$PWD"
           grep -n -A10 'R36S V027 explicit SDL GLES context initialized' extern/aurora/lib/window.cpp || true
           grep -n -A10 'R36S V030 render worker disabled' extern/aurora/lib/gfx/render_worker.cpp || true
@@ -140,7 +141,7 @@ jobs:
 
           # RK3326/Mali-G31 r13: force Dawn's OpenGLES backend.
           # The legacy Vulkan ICD crashes inside Dawn PhysicalDevice::InitializeImpl.
-          sed -i '/\.appName = "Foxhollow",/a\      .desiredBackend = BACKEND_OPENGLES,\n      .cpuVertexDecode = true,\n      .uniformTable = true,\n      .batchDraws = true,\n      .glesDirectSubmission = 1,\n      .glesMappedStreams = -1,' src/main.c
+          sed -i '/\.appName = "Foxhollow",/a\      .desiredBackend = BACKEND_OPENGLES,\n      .cpuVertexDecode = true,\n      .uniformTable = true,\n      .batchDraws = true,\n      .glesDirectSubmission = 1,\n      .glesMappedStreams = -1,\n      .renderStats = true,' src/main.c
           grep -n -A6 'appName = "Foxhollow"' src/main.c
           git submodule update --init --recursive
           git rev-parse HEAD
@@ -270,12 +271,12 @@ jobs:
 
           {
             echo "R36S patch commit: $GITHUB_SHA"
-            echo "Port version: V034"
+            echo "Port version: V035"
             echo "Foxhollow commit: 29bcac7af9c1451d36f55d1159bc86d2584956dd"
             echo "Build container: quay.io/pypa/manylinux_2_28_aarch64"
             echo "Target: R36S ArkOS AeUX / aarch64 / glibc 2.30"
             echo "Default GameCube language: German (1)"
-            echo "Graphics backend: Aurora ARM direct GLES submission + CPU vertex decode + V027 direct present + V030 inline renderer + V033 DVD semantics + V034 G31 profile"
+            echo "Graphics backend: Aurora ARM direct GLES submission + CPU vertex decode + zero vertex-stage storage buffers + V027 direct present + V030 inline renderer + V033 DVD semantics + render stats"
             echo "SDL: shared SDL3-to-system-SDL2 PortMaster shim 6057d79b (ArkOS KMSDRM + native ALSA)"
             echo "Audio queue: 120 ms (R36S underrun guard)"
             echo "DVD loader: direct nod path open (RVZ diagnostics enabled)"
@@ -304,3 +305,4 @@ jobs:
 # V033 consolidated build trigger: restore full V027 DVD sync/callback semantics
 # V034 consolidated build trigger: direct GLES GX submission on Mali-G31
 # V034 direct GLES activation fix: explicit patched Dawn include path
+# V035 consolidated build trigger: direct GLES on R36S zero vertex storage limit + renderer stats
