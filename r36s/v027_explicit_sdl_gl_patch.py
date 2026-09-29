@@ -17,12 +17,11 @@ s = p.read_text()
 # Keep an explicit SDL-created GLES context, exactly like the working Strikers/Melee
 # KMSDRM display path. SDL_Renderer owns a private context and cannot safely hand
 # its EGL window surface to our shared presenter on Mali r13p0.
-old = """SDL_Window* g_window;
-SDL_Renderer* g_renderer;
-#ifdef AURORA_R36S_OFFSCREEN
-"""
-new = """SDL_Window* g_window;
-SDL_Renderer* g_renderer;
+# Aurora's newer direct-GLES branch adds g_windowExternal between the
+# window and renderer. Insert the explicit R36S context at the first R36S
+# presentation-state block instead of matching the older exact state layout.
+old = "SDL_Renderer* g_renderer;\n#ifdef AURORA_R36S_OFFSCREEN\n"
+new = """SDL_Renderer* g_renderer;
 #ifdef AURORA_R36S_OFFSCREEN
 SDL_GLContext g_r36sWindowContext = nullptr;
 """
