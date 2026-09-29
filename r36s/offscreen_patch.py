@@ -8,6 +8,13 @@ def replace(rel, old, new):
     p = root / rel
     s = p.read_text()
     if old not in s:
+        # Aurora's later direct-GLES branch owns a redesigned end-frame lambda.
+        # It no longer needs the V022 CPU-readback body; v034 direct_gl_present
+        # injects the R36S presentation path into the new lambda instead.
+        if rel == "extern/aurora/lib/aurora.cpp" and old.startswith(
+                "                     wgpu::CommandEncoder& encoder, std::vector<gfx::AfterSubmitCallback>"):
+            print("R36S offscreen: skipping legacy readback lambda on direct-GLES Aurora")
+            return
         raise SystemExit(f"pattern not found in {rel}: {old[:120]!r}")
     p.write_text(s.replace(old, new, 1))
 
