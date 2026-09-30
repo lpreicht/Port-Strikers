@@ -1,0 +1,25 @@
+STAR FOX ADVENTURES - R36S CLEAN GITHUB BUILD
+
+This package intentionally has one launcher and one port directory.
+Do not layer old V0xx overlay ZIPs over it.
+
+INSTALL / TEST
+1. Extract the ZIP into your Ports folder.
+2. Copy the CONTENTS of your known-good old:
+      starfoxadventures/conf/
+   into:
+      starfoxadventures/conf/
+3. Copy your Star Fox Adventures Europe Rev 1 .rvz/.iso/.gcm into:
+      starfoxadventures/gamedata/
+4. Start "Star Fox Adventures".
+
+The package does not include copyrighted game data.
+
+CURRENT CLEAN TEST GOALS
+- current Foxhollow source
+- 8 MiB index stream for planar reflections
+- restore GX_CTF_B8 EFB blur/compositing in the ARM renderer
+- no global blur-suppression preload
+- source-level frame delta cap raised from 6 to 10 for slow R36S 3D intro scenes
+- Direct-GLES R36S path retained
+- one permanent launcher; future tests replace this GitHub artifact
