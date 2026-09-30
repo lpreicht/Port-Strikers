@@ -276,7 +276,7 @@ jobs:
             echo "Default GameCube language: German (1)"
             echo "Graphics backend: Aurora ARM direct GLES submission + CPU vertex decode + V027 direct present + inline renderer + current Foxhollow EFB/reflection compatibility"
             echo "Reflection path: 8 MiB planar-reflection index stream; ARM fast B8 copy retained; reflection copies every frame"
-            echo "Timing/performance: timeDelta cap 6 -> 10; menu direct-RGBA THP; menu stale-frame catch-up; 100 ms async pipeline wait fallback"
+            echo "Timing/performance: timeDelta cap 6 -> 10; menu direct-RGBA THP; menu stale-frame catch-up; V053-style direct-draw pipeline correctness wait"
             echo "SDL: shared SDL3-to-system-SDL2 PortMaster shim 6057d79b (ArkOS KMSDRM + native ALSA)"
             echo "Audio queue: 120 ms (R36S underrun guard)"
             echo "DVD loader: direct nod path open (RVZ diagnostics enabled)"
