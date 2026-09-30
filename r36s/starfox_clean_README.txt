@@ -22,4 +22,6 @@ CURRENT CLEAN TEST GOALS
 - no global blur-suppression preload
 - source-level frame delta cap raised from 6 to 10 for slow R36S 3D intro scenes
 - Direct-GLES R36S path retained
+- menu/title THP uses direct RGBA decode + max-3-frame catch-up
+- async Direct-GLES pipeline misses wait up to 100 ms instead of dropping the draw
 - one permanent launcher; future tests replace this GitHub artifact
