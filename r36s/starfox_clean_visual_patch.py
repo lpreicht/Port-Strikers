@@ -66,12 +66,27 @@ replace(
 
 # Foxhollow v1.0.10: planar-reflection geometry can overflow Aurora's old 2 MiB
 # index stream. Keep the ARM renderer, but carry the upstream 8 MiB fix across.
-replace(
-    "extern/aurora/lib/gfx/resources.hpp",
+resources = root / "extern/aurora/lib/gfx/resources.hpp"
+resources_text = resources.read_text()
+index_variants = (
+    "inline constexpr uint64_t IndexBufferSize = 2 * 1024 * 1024;",
     "inline constexpr uint64_t IndexBufferSize = 2097152;    // 2 MiB",
-    "inline constexpr uint64_t IndexBufferSize = 8388608;    // 8 MiB - Foxhollow planar reflections",
-    "planar-reflection index buffer 2 MiB -> 8 MiB",
 )
+for old_index in index_variants:
+    if old_index in resources_text:
+        resources_text = resources_text.replace(
+            old_index,
+            "inline constexpr uint64_t IndexBufferSize = 8 * 1024 * 1024; // Foxhollow planar reflections",
+            1,
+        )
+        resources.write_text(resources_text)
+        print("patched planar-reflection index buffer 2 MiB -> 8 MiB")
+        break
+else:
+    if "IndexBufferSize = 8 * 1024 * 1024" in resources_text:
+        print("planar-reflection index buffer already 8 MiB")
+    else:
+        raise SystemExit("planar-reflection index buffer: no recognized 2 MiB source form found")
 
 # Foxhollow v1.0.3 restored the GameCube B8 EFB blur used by effects/compositing.
 # The ARM fork predates that fix. Use source-texel steps, which are equivalent
