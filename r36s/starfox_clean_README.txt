@@ -23,5 +23,5 @@ CURRENT CLEAN TEST GOALS
 - source-level frame delta cap raised from 6 to 10 for slow R36S 3D intro scenes
 - Direct-GLES R36S path retained
 - menu/title THP uses direct RGBA decode + max-3-frame catch-up
-- async Direct-GLES pipeline misses wait up to 100 ms instead of dropping the draw
+- only actual Direct-GLES draw misses may wait for the queued pipeline (V053-style correctness fallback)
 - one permanent launcher; future tests replace this GitHub artifact
