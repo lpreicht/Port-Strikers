@@ -55,6 +55,36 @@ if "fhConfigRenderScale(void)" not in text:
     cfg.write_text(text)
     print("patched Foxhollow render-scale env implementation")
 
+# Keep the proven R36S dynamic EFB profile in source instead of libsfscale.so:
+# the title/intro map (63) runs at 0.5x, while actual gameplay uses the normal
+# FOXHOLLOW_RENDER_SCALE value (0.6667 in the clean launcher).
+replace(
+    "port/src/foxhollow_breadcrumb.c",
+    """#include "foxhollow_crash.h"
+
+#include <stdio.h>
+
+void fhNoteMapLoaded(int mapId) {
+    fprintf(stderr, "[foxhollow] map-loaded id=%d\\n", mapId);
+    fflush(stderr);
+}
+""",
+    """#include "foxhollow_crash.h"
+#include "foxhollow_config.h"
+#include "dolphin/vi.h"
+
+#include <stdio.h>
+
+void fhNoteMapLoaded(int mapId) {
+    const f32 scale = mapId == 63 ? 0.5f : fhConfigRenderScale();
+    VISetFrameBufferScale(scale);
+    fprintf(stderr, "[foxhollow] map-loaded id=%d efb-scale=%.4f\\n", mapId, scale);
+    fflush(stderr);
+}
+""",
+    "source-level dynamic R36S EFB scale",
+)
+
 # Preserve real-time pacing on the R36S when a heavy scene drops below 10 fps.
 # At normal gameplay rates this is inert; it only raises the original 6-frame cap.
 replace(
