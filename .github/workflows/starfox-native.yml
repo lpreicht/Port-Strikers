@@ -4,13 +4,14 @@ on:
   push:
     branches:
       - starfox-clean-r36s
+      - starfox-performance-recovery
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: starfox-r36s-clean
+  group: starfox-r36s-clean-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -139,8 +140,8 @@ jobs:
           grep -n 'AI_OUTPUT_QUEUE_MS' port/src/ai_shim.c
           # RK3326/Mali-G31 r13: force Dawn's OpenGLES backend.
           # The legacy Vulkan ICD crashes inside Dawn PhysicalDevice::InitializeImpl.
-          sed -i '/\.appName = "Foxhollow",/a\      .desiredBackend = BACKEND_OPENGLES,\n      .cpuVertexDecode = true,\n      .uniformTable = true,\n      .batchDraws = true,\n      .glesDirectSubmission = 1,\n      .glesMappedStreams = -1,\n      .renderStats = true,\n      .smallCopyPassInterval = 1,' src/main.c
-          grep -n -A6 'appName = "Foxhollow"' src/main.c
+          sed -i '/\.appName = "Foxhollow",/a\      .desiredBackend = BACKEND_OPENGLES,\n      .cpuVertexDecode = true,\n      .uniformTable = true,\n      .batchDraws = true,\n      .glesDirectSubmission = 1,\n      .glesMappedStreams = 1,\n      .renderStats = true,\n      .smallCopyPassInterval = 1,' src/main.c
+          grep -n -A12 'appName = "Foxhollow"' src/main.c
           git submodule update --init --recursive
           git rev-parse HEAD
 
@@ -269,13 +270,14 @@ jobs:
 
           {
             echo "R36S patch commit: $GITHUB_SHA"
-            echo "Port version: CLEAN-R36S"
+            echo "Port version: PERFORMANCE-RECOVERY (hardware validation pending)"
             echo "Foxhollow commit: 51c0deb7be83e8d5a9961f018dd34c8e0022e062 (v1.0.12)"
             echo "Build container: quay.io/pypa/manylinux_2_28_aarch64"
             echo "Target: R36S ArkOS AeUX / aarch64 / glibc 2.30"
             echo "Default GameCube language: German (1)"
             echo "Graphics backend: Aurora ARM direct GLES submission + CPU vertex decode + V027 direct present + inline renderer + current Foxhollow EFB/reflection compatibility"
             echo "Reflection path: 8 MiB planar-reflection index stream; ARM fast B8 copy retained; reflection copies every frame"
+            echo "Stream uploads: mapped GL streams enabled (restored V053 setting)"
             echo "Timing/performance: timeDelta cap 6 -> 10; menu direct-RGBA THP; menu stale-frame catch-up; V053-style direct-draw pipeline correctness wait"
             echo "SDL: shared SDL3-to-system-SDL2 PortMaster shim 6057d79b (ArkOS KMSDRM + native ALSA)"
             echo "Audio queue: 120 ms (R36S underrun guard)"
