@@ -18,7 +18,7 @@ The package does not include copyrighted game data.
 CURRENT CLEAN TEST GOALS
 - current Foxhollow source
 - 8 MiB index stream for planar reflections
-- restore GX_CTF_B8 EFB blur/compositing in the ARM renderer
+- keep the ARM fast GX_CTF_B8 copy path (desktop 16x16 blur is too expensive on Mali-G31)
 - no global blur-suppression preload
 - source-level frame delta cap raised from 6 to 10 for slow R36S 3D intro scenes
 - Direct-GLES R36S path retained
