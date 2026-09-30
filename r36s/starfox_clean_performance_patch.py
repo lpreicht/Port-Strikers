@@ -238,23 +238,32 @@ dll.write_text(s)
 print("patched menu-only THP stale-frame catch-up")
 
 # ---------------------------------------------------------------------------
-# 4) Restore the stable Direct-GLES pipeline wait fallback in source.
-#    Only wait if the requested pipeline is genuinely pending on the async
-#    compiler thread. Timeout remains 100 ms like the proven helper.
+# 4) Restore the V053-style Direct-GLES pipeline correctness wait narrowly.
+#    IMPORTANT: never make generic get_pipeline() blocking. The direct renderer
+#    probes pipelines in several preparation paths; blocking there caused the
+#    300-360 ms/frame regression seen in CLEAN run 96.
+#
+#    Only the actual Direct-GLES draw preparation may wait for a pipeline that
+#    is already queued on Aurora's async compiler. This mirrors the proven
+#    helper behaviour: preserve the draw, but do not stall unrelated lookups.
 # ---------------------------------------------------------------------------
+hpp = root / "extern/aurora/lib/gfx/pipeline_cache.hpp"
+s = hpp.read_text()
+old = """bool get_pipeline(PipelineRef ref, wgpu::RenderPipeline& pipeline);
+// Renderer time accounting (AuroraConfig::renderStats): time and count of blocking pipeline waits.
+"""
+new = """bool get_pipeline(PipelineRef ref, wgpu::RenderPipeline& pipeline);
+bool wait_pipeline(PipelineRef ref, wgpu::RenderPipeline& pipeline, uint32_t timeoutMs);
+// Renderer time accounting (AuroraConfig::renderStats): time and count of blocking pipeline waits.
+"""
+if old not in s:
+    raise SystemExit("pipeline wait: header declaration anchor not found")
+hpp.write_text(s.replace(old, new, 1))
+
 pipe = root / "extern/aurora/lib/gfx/pipeline_cache.cpp"
 s = pipe.read_text()
-old = """bool get_pipeline(PipelineRef ref, wgpu::RenderPipeline& pipeline) {
-  std::lock_guard guard{g_pipelineMutex};
-  const auto it = g_pipelines.find(ref);
-  if (it == g_pipelines.end()) {
-    return false;
-  }
-  pipeline = it->second.pipeline;
-  return true;
-}
-"""
-new = """bool get_pipeline(PipelineRef ref, wgpu::RenderPipeline& pipeline) {
+# Undo the too-broad CLEAN implementation if this patch is being re-applied.
+broad = """bool get_pipeline(PipelineRef ref, wgpu::RenderPipeline& pipeline) {
   std::unique_lock lock{g_pipelineMutex};
   auto it = g_pipelines.find(ref);
   if (it == g_pipelines.end() && g_hasPipelineThread && g_pendingPipelines.contains(ref)) {
@@ -276,9 +285,82 @@ new = """bool get_pipeline(PipelineRef ref, wgpu::RenderPipeline& pipeline) {
   return true;
 }
 """
+normal = """bool get_pipeline(PipelineRef ref, wgpu::RenderPipeline& pipeline) {
+  std::lock_guard guard{g_pipelineMutex};
+  const auto it = g_pipelines.find(ref);
+  if (it == g_pipelines.end()) {
+    return false;
+  }
+  pipeline = it->second.pipeline;
+  return true;
+}
+"""
+if broad in s:
+    s = s.replace(broad, normal, 1)
+elif normal not in s:
+    raise SystemExit("pipeline wait: get_pipeline implementation not recognized")
+
+anchor = normal
+narrow = normal + """
+bool wait_pipeline(PipelineRef ref, wgpu::RenderPipeline& pipeline, uint32_t timeoutMs) {
+  std::unique_lock lock{g_pipelineMutex};
+  auto it = g_pipelines.find(ref);
+  if (it != g_pipelines.end()) {
+    pipeline = it->second.pipeline;
+    return true;
+  }
+  if (!g_hasPipelineThread || !g_pendingPipelines.contains(ref)) {
+    return false;
+  }
+
+  const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(timeoutMs);
+  g_pipelineReadyCv.wait_until(lock, deadline, [=] {
+    return g_pipelines.contains(ref) || g_pipelineThreadEnd.load(std::memory_order_relaxed);
+  });
+  it = g_pipelines.find(ref);
+  if (it == g_pipelines.end()) {
+    return false;
+  }
+  pipeline = it->second.pipeline;
+  return true;
+}
+"""
+if anchor not in s:
+    raise SystemExit("pipeline wait: normal get_pipeline anchor not found")
+s = s.replace(anchor, narrow, 1)
+pipe.write_text(s)
+
+gles = root / "extern/aurora/lib/gfx/gles_direct.cpp"
+s = gles.read_text()
+old = """  PreparedPipeline p;
+  if (!gx::find_pipeline_config(ref, p.config) || !get_pipeline(ref, p.owner)) {
+    return nullptr;
+  }
+"""
+new = """  PreparedPipeline p;
+  if (!gx::find_pipeline_config(ref, p.config)) {
+    return nullptr;
+  }
+  if (!get_pipeline(ref, p.owner)) {
+    static bool loggedRecovered = false;
+    static bool loggedTimeout = false;
+    if (!wait_pipeline(ref, p.owner, 5000)) {
+      if (!loggedTimeout) {
+        Log.warn("R36S Direct-GLES pipeline correctness wait timed out; falling back to skip");
+        loggedTimeout = true;
+      }
+      return nullptr;
+    }
+    if (!loggedRecovered) {
+      Log.info("R36S Direct-GLES async pipeline miss recovered; draw preserved");
+      loggedRecovered = true;
+    }
+  }
+"""
 if old not in s:
-    raise SystemExit("pipeline wait: get_pipeline pattern not found")
-pipe.write_text(s.replace(old, new, 1))
-print("patched 100 ms Direct-GLES pipeline wait fallback")
+    raise SystemExit("pipeline wait: direct prepare_pipeline anchor not found")
+gles.write_text(s.replace(old, new, 1))
+print("patched narrow V053-style Direct-GLES pipeline correctness wait")
 
 print("Star Fox clean R36S performance patches applied successfully")
+
