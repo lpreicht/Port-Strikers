@@ -88,24 +88,153 @@ else:
     else:
         raise SystemExit("planar-reflection index buffer: no recognized 2 MiB source form found")
 
-# Foxhollow v1.0.3 restored the GameCube B8 EFB blur used by effects/compositing.
-# The ARM fork predates that fix. Use source-texel steps, which are equivalent
-# under the scaled EFB and avoid changing the ARM fork's uniform ABI.
-tex = root / "extern/aurora/lib/gfx/tex_copy_conv.cpp"
-text = tex.read_text()
-old_frag = '''static constexpr std::string_view FragB8 = R"(
+# Foxhollow v1.0.3 restored the GameCube GX_CTF_B8 EFB blur. Port that
+# fix faithfully to the older ARM renderer, including logical copy size so the
+# blur footprint stays correct when the R36S renders the EFB below 1.0 scale.
+replace(
+    "extern/aurora/lib/dolphin/gx/GXFrameBuffer.cpp",
+    """  gfx::resolve_pass_into(handle.handle, rect, clearColor, clearAlpha, clearDepth, g_gxState.clearColor,
+                         clear_depth_value(), texCopyFmt);""",
+    """  gfx::resolve_pass_into(handle.handle, rect, clearColor, clearAlpha, clearDepth, g_gxState.clearColor,
+                         clear_depth_value(), texCopyFmt,
+                         {g_gxState.texCopyDstWidth, g_gxState.texCopyDstHeight});""",
+    "B8 logical EFB copy size",
+)
+
+replace(
+    "extern/aurora/lib/gfx/recording.hpp",
+    """void resolve_pass_into(TextureHandle texture, ClipRect rect, bool clearColor, bool clearAlpha, bool clearDepth,
+                       Vec4<float> clearColorValue, float clearDepthValue, GXTexFmt resolveFormat = GX_TF_RGBA8);""",
+    """void resolve_pass_into(TextureHandle texture, ClipRect rect, bool clearColor, bool clearAlpha, bool clearDepth,
+                       Vec4<float> clearColorValue, float clearDepthValue, GXTexFmt resolveFormat = GX_TF_RGBA8,
+                       Vec2<uint32_t> logicalSize = {});""",
+    "B8 resolve signature",
+)
+
+replace(
+    "extern/aurora/lib/gfx/recording.cpp",
+    """// UV transform uniform for tex_copy_conv (crop region in UV space)
+std::array<float, 4> copy_uv_transform(const RenderPass& pass, const ClipRect& rect) {
+  const auto& size = pass.colorAttachments[SceneColorAttachmentIndex].size;
+  const auto srcW = static_cast<float>(size.width);
+  const auto srcH = static_cast<float>(size.height);
+  return {
+      static_cast<float>(rect.x) / srcW,
+      static_cast<float>(rect.y) / srcH,
+      static_cast<float>(rect.width) / srcW,
+      static_cast<float>(rect.height) / srcH,
+  };
+}""",
+    """// UV transform uniform for tex_copy_conv (crop region in UV space).
+// GX_CTF_B8 additionally carries the original logical copy size so the
+// 16x16 GameCube blur remains correct under a scaled internal EFB.
+std::array<float, 8> copy_uv_transform(const RenderPass& pass, const ClipRect& rect,
+                                       GXTexFmt resolveFormat = GX_TF_RGBA8,
+                                       Vec2<uint32_t> logicalSize = {}) {
+  const auto& size = pass.colorAttachments[SceneColorAttachmentIndex].size;
+  const auto srcW = static_cast<float>(size.width);
+  const auto srcH = static_cast<float>(size.height);
+  const float blurWindow =
+      resolveFormat == GX_CTF_B8 && logicalSize.x != 0 && logicalSize.y != 0 ? 16.f : 0.f;
+  return {
+      static_cast<float>(rect.x) / srcW,
+      static_cast<float>(rect.y) / srcH,
+      static_cast<float>(rect.width) / srcW,
+      static_cast<float>(rect.height) / srcH,
+      blurWindow,
+      0.f,
+      static_cast<float>(logicalSize.x),
+      static_cast<float>(logicalSize.y),
+  };
+}""",
+    "B8 scaled UV uniform",
+)
+
+replace(
+    "extern/aurora/lib/gfx/recording.cpp",
+    """void resolve_pass_into(TextureHandle texture, ClipRect rect, bool clearColor, bool clearAlpha, bool clearDepth,
+                       Vec4<float> clearColorValue, float clearDepthValue, GXTexFmt resolveFormat) {""",
+    """void resolve_pass_into(TextureHandle texture, ClipRect rect, bool clearColor, bool clearAlpha, bool clearDepth,
+                       Vec4<float> clearColorValue, float clearDepthValue, GXTexFmt resolveFormat,
+                       Vec2<uint32_t> logicalSize) {""",
+    "B8 recording resolve signature",
+)
+
+# The ARM fork can fuse two small render-to-texture passes. Its dual conversion
+# shader has a different uniform layout, so B8 copies must stay unfused.
+replace(
+    "extern/aurora/lib/gfx/recording.cpp",
+    """  bool fusedSecond = false;
+  if (g_passFusion.active) {
+    fusedSecond = pass_fusion_complete(texture, rect, clearColor, clearAlpha, clearDepth, resolveFormat);
+    if (!fusedSecond) {
+      pass_fusion_split();
+    }
+  }""",
+    """  bool fusedSecond = false;
+  if (g_passFusion.active) {
+    if (resolveFormat == GX_CTF_B8) {
+      pass_fusion_split();
+    } else {
+      fusedSecond = pass_fusion_complete(texture, rect, clearColor, clearAlpha, clearDepth, resolveFormat);
+      if (!fusedSecond) {
+        pass_fusion_split();
+      }
+    }
+  }""",
+    "B8 active pass-fusion guard",
+)
+
+replace(
+    "extern/aurora/lib/gfx/recording.cpp",
+    """    prevPass.resolveUniformRange = push_uniform(copy_uv_transform(prevPass, rect));""",
+    """    prevPass.resolveUniformRange =
+        push_uniform(copy_uv_transform(prevPass, rect, resolveFormat, logicalSize));""",
+    "B8 resolve uniform data",
+)
+
+replace(
+    "extern/aurora/lib/gfx/recording.cpp",
+    """    if (pass_fusion_begin(prevPass, rect, clearColor, clearAlpha, clearDepth, clearColorValue, clearDepthValue)) {
+      return;
+    }""",
+    """    if (resolveFormat != GX_CTF_B8 &&
+        pass_fusion_begin(prevPass, rect, clearColor, clearAlpha, clearDepth, clearColorValue, clearDepthValue)) {
+      return;
+    }""",
+    "B8 pass-fusion begin guard",
+)
+
+replace(
+    "extern/aurora/lib/gfx/tex_copy_conv.cpp",
+    """struct UVTransform {
+    offset: vec2f,
+    scale: vec2f,
+};""",
+    """struct UVTransform {
+    offset: vec2f,
+    scale: vec2f,
+    blur: vec4f,
+};""",
+    "B8 shader UV transform",
+)
+
+replace(
+    "extern/aurora/lib/gfx/tex_copy_conv.cpp",
+    """static constexpr std::string_view FragB8 = R"(
 @fragment fn fs_main(in: VertexOutput) -> @location(0) vec4f {
     let b = textureSample(src, src_samp, in.uv).b;
     return vec4f(b, b, b, b);
 }
-)"sv;'''
-new_frag = '''static constexpr std::string_view FragB8 = R"(
+)"sv;""",
+    """static constexpr std::string_view FragB8 = R"(
 @fragment fn fs_main(in: VertexOutput) -> @location(0) vec4f {
-    // Star Fox Adventures uses GX_CTF_B8 EFB copies as a 16x16 blur source
-    // for original GameCube glow/compositing effects.
-    let window: i32 = 16;
-    let texSize = vec2f(textureDimensions(src));
-    let step = vec2f(1.0) / texSize;
+    let window = i32(uv_xf.blur.x);
+    if (window <= 1) {
+        let b = textureSample(src, src_samp, in.uv).b;
+        return vec4f(b, b, b, b);
+    }
+    let step = uv_xf.scale / uv_xf.blur.zw;
     let lo = uv_xf.offset;
     let hi = uv_xf.offset + uv_xf.scale;
     let half = window / 2;
@@ -121,56 +250,19 @@ new_frag = '''static constexpr std::string_view FragB8 = R"(
     let b = sum / f32(window * window);
     return vec4f(b, b, b, b);
 }
-)"sv;'''
-if old_frag not in text:
-    raise SystemExit("B8 blur: shader pattern not found")
-text = text.replace(old_frag, new_frag, 1)
-old_vis = """.binding = 2,
-          .visibility = wgpu::ShaderStage::Vertex,"""
-new_vis = """.binding = 2,
-          .visibility = wgpu::ShaderStage::Vertex | wgpu::ShaderStage::Fragment,"""
-if old_vis not in text:
-    raise SystemExit("B8 blur: bind-group visibility pattern not found")
-text = text.replace(old_vis, new_vis, 1)
-tex.write_text(text)
-print("patched GX_CTF_B8 EFB blur in ARM tex-copy shader")
+)"sv;""",
+    "GX_CTF_B8 16x16 EFB blur",
+)
 
-# The ARM fork can fuse two small render-to-texture passes. Its dual shader does
-# not carry the B8 blur region independently, so never fuse B8 copies.
-rec = root / "extern/aurora/lib/gfx/recording.cpp"
-text = rec.read_text()
-old = """  bool fusedSecond = false;
-  if (g_passFusion.active) {
-    fusedSecond = pass_fusion_complete(texture, rect, clearColor, clearAlpha, clearDepth, resolveFormat);
-    if (!fusedSecond) {
-      pass_fusion_split();
-    }
-  }"""
-new = """  bool fusedSecond = false;
-  if (g_passFusion.active) {
-    if (resolveFormat == GX_CTF_B8) {
-      pass_fusion_split();
-    } else {
-      fusedSecond = pass_fusion_complete(texture, rect, clearColor, clearAlpha, clearDepth, resolveFormat);
-      if (!fusedSecond) {
-        pass_fusion_split();
-      }
-    }
-  }"""
-if old not in text:
-    raise SystemExit("B8 fusion: active-fusion pattern not found")
-text = text.replace(old, new, 1)
-old = """    if (pass_fusion_begin(prevPass, rect, clearColor, clearAlpha, clearDepth, clearColorValue, clearDepthValue)) {
-      return;
-    }"""
-new = """    if (resolveFormat != GX_CTF_B8 &&
-        pass_fusion_begin(prevPass, rect, clearColor, clearAlpha, clearDepth, clearColorValue, clearDepthValue)) {
-      return;
-    }"""
-if old not in text:
-    raise SystemExit("B8 fusion: begin-fusion pattern not found")
-text = text.replace(old, new, 1)
-rec.write_text(text)
-print("disabled ARM pass-fusion for GX_CTF_B8 copies")
+replace(
+    "extern/aurora/lib/gfx/tex_copy_conv.cpp",
+    """.binding = 2,
+          .visibility = wgpu::ShaderStage::Vertex,""",
+    """.binding = 2,
+          .visibility = wgpu::ShaderStage::Vertex | wgpu::ShaderStage::Fragment,""",
+    "B8 fragment uniform visibility",
+)
+
+print("patched exact Foxhollow B8 EFB blur semantics into ARM renderer")
 
 print("Star Fox clean R36S source patches applied successfully")
