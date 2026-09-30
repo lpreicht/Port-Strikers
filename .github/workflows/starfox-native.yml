@@ -300,7 +300,7 @@ jobs:
           cp artifact/foxhollow.aarch64 package/starfoxadventures/bin/foxhollow.aarch64
           cp -a artifact/lib/. package/starfoxadventures/lib/
           cp artifact/BUILD_INFO.txt package/starfoxadventures/BUILD_INFO.txt
-          cp artifact/SHA256SUMS.txt package/starfoxadventures/SHA256SUMS-runtime.txt
+          sed -e 's#artifact/foxhollow.aarch64#bin/foxhollow.aarch64#' -e 's#artifact/lib/#lib/#' artifact/SHA256SUMS.txt > package/starfoxadventures/SHA256SUMS-runtime.txt
 
           cp "$GITHUB_WORKSPACE/r36s/starfox_clean_launcher.sh" "package/Star Fox Adventures.sh"
           chmod +x "package/Star Fox Adventures.sh" package/starfoxadventures/bin/foxhollow.aarch64
