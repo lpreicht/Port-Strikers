@@ -293,6 +293,22 @@ replace(
     "B8 fragment uniform visibility",
 )
 
+# B8 copies are intentionally excluded from pass fusion above. Do not compile
+# the ARM renderer's dual-target B8 pipeline either: its DualShaderPreamble has
+# a different UVTransform layout and cannot provide the blur parameters.
+replace(
+    "extern/aurora/lib/gfx/tex_copy_conv.cpp",
+    """    if (auto dual = create_dual_pipeline(conv, g_bindGroupLayout)) {
+      g_dualPipelines[conv.fmt] = std::move(dual);
+    }""",
+    """    if (conv.fmt != GX_CTF_B8) {
+      if (auto dual = create_dual_pipeline(conv, g_bindGroupLayout)) {
+        g_dualPipelines[conv.fmt] = std::move(dual);
+      }
+    }""",
+    "skip unused dual B8 pipeline",
+)
+
 print("patched exact Foxhollow B8 EFB blur semantics into ARM renderer")
 
 print("Star Fox clean R36S source patches applied successfully")
