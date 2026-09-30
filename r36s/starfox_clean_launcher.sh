@@ -133,9 +133,6 @@ export FOXHOLLOW_CACHE_DIR="$CONFDIR/cache"
 export FOXHOLLOW_PRESENT=direct
 export AURORA_GLES_DRIVER_PROBE=0
 
-# Make it explicit that Star Fox reflection cameras update every frame.
-export AURORA_SMALL_COPY_PASS_INTERVAL=1
-
 if [ "${FOXHOLLOW_PERFORMANCE:-1}" = 1 ]; then
   if [ -r "$cpu_governor_path" ]; then
     previous="$(cat "$cpu_governor_path" 2>/dev/null || true)"
