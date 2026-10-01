@@ -88,7 +88,7 @@ new = """  static unsigned sSortRuns = 0, sSortedDraws = 0, sSortFrames = 0;
     if (!pass.sealed || pass.discardable || pass.colorAttachmentCount == 0) {
       continue;
     }
-    const bool reflectionHandoffSync = std::exchange(pendingReflectionHandoffSync, false);
+    const bool reflectionHandoffSync = pendingReflectionHandoffSync;\n    pendingReflectionHandoffSync = false;
     PassPlan plan{
         .label = pass.directLabel,
         .width = pass.colorAttachments[0].size.width,
