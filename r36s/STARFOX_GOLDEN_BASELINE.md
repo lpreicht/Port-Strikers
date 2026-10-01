@@ -338,3 +338,43 @@ One visual variable at a time.
 6. Only then evaluate reflective floor / meteorites / water.
 
 If steps 1-5 regress, revert the new change before continuing the reflection investigation.
+
+
+### 2026-10-01 GX indirect fixed-point hardware result
+
+Build `ff2de9646e4ede93eeca7ca5bd3b100c2afbbb2b` was tested on R36S.
+
+Hardware result:
+- water blinking while moving: unchanged
+- reflective floor/material flicker while moving: unchanged
+- overall rendering/models: unchanged
+- performance: unchanged
+- staff-end cutscene spheres: unchanged
+
+The runtime log confirms the intended test was active: the build identifies the exact commit and reports the
+GX-style 8-bit indirect samples, 1/128-texel coordinates and signed-24 accumulator wrap.
+
+Conclusion:
+The tested indirect-TEV fixed-point differences are not the root cause of the visible movement flicker. Remove
+`starfox_indirect_fixedpoint_patch.py` from active builds. Keep it only as historical diagnostic evidence.
+
+Performance remains a separate issue: map 7 still falls into roughly 4-6 retraces/s with render time well above
+130 ms while TexCopyConv itself remains only a few milliseconds. The heavy state also shows large program and
+pipeline-state churn, so copy conversion is not the dominant gameplay cost.
+
+### Next isolated test: freeze the generated reflection pair
+
+The next test changes Foxhollow rather than Aurora's reflection math:
+- after a map-page change, allow exactly 8 normal calls to `updateReflectionTextures()`
+- those calls build fresh RGB565 + Z8 reflection copies normally
+- after the eighth update, return from `updateReflectionTextures()` and keep sampling the last valid pair
+- reset this diagnostic automatically when `gCurRomListPage` changes
+- leave reflection scroll/distortion animation, material TEV state, EFB alpha/copy correctness, render scale,
+  depth, language, audio and V053 visual-safety behavior untouched
+
+Interpretation:
+- if water/floor movement flicker stops once the pair freezes, the live EFB-copy/update path is implicated
+- if movement flicker continues unchanged with a frozen pair, the dynamic copy/update path is excluded and the
+  fault is downstream in sampling/material/draw state
+- the black staff-end spheres are not the primary criterion because HUD-hidden/cutscene update policy may be a
+  separate issue
