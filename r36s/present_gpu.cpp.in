@@ -1,0 +1,123 @@
+#ifdef AURORA_R36S_OFFSCREEN
+static EGLDisplay g_r36sPresentDisplay = EGL_NO_DISPLAY;
+static EGLContext g_r36sPresentContext = EGL_NO_CONTEXT;
+static EGLSurface g_r36sPresentSurface = EGL_NO_SURFACE;
+static EGLint g_r36sPresentConfig = 0;
+static GLuint g_r36sReadFbo = 0;
+
+static bool r36s_init_present_context() {
+  if (g_r36sPresentContext != EGL_NO_CONTEXT) return true;
+  const EGLContext producer = eglGetCurrentContext();
+  if (producer == EGL_NO_CONTEXT || eglGetCurrentDisplay() != g_r36sPresentDisplay) return false;
+  EGLint configId = g_r36sPresentConfig;
+  EGLint producerConfig = -1;
+  if (!eglQueryContext(g_r36sPresentDisplay, producer, EGL_CONFIG_ID, &producerConfig)) return false;
+  EGLConfig config = nullptr;
+  if (producerConfig != 0) {
+    EGLint count = 0;
+    const EGLint attrs[] = {EGL_CONFIG_ID, configId, EGL_NONE};
+    if (!eglChooseConfig(g_r36sPresentDisplay, attrs, &config, 1, &count) || count != 1) return false;
+  }
+  EGLint major = 3, minor = 1;
+  eglQueryContext(g_r36sPresentDisplay, producer, EGL_CONTEXT_MAJOR_VERSION_KHR, &major);
+  eglQueryContext(g_r36sPresentDisplay, producer, EGL_CONTEXT_MINOR_VERSION_KHR, &minor);
+  GLboolean robust = GL_FALSE;
+  GLint reset = 0x8261;
+  glGetBooleanv(0x90F3, &robust);
+  glGetIntegerv(0x8256, &reset);
+  while (glGetError() != GL_NO_ERROR) {}
+  eglGetError();
+  const char* extensions = eglQueryString(g_r36sPresentDisplay, EGL_EXTENSIONS);
+  const char* version = eglQueryString(g_r36sPresentDisplay, EGL_VERSION);
+  int eglMajor = 1, eglMinor = 4;
+  if (version) std::sscanf(version, "%d.%d", &eglMajor, &eglMinor);
+  const bool egl15 = eglMajor > 1 || (eglMajor == 1 && eglMinor >= 5);
+  std::vector<EGLint> attrs{EGL_CONTEXT_MAJOR_VERSION_KHR, major, EGL_CONTEXT_MINOR_VERSION_KHR, minor};
+  if (egl15 || (extensions && std::strstr(extensions, "EGL_EXT_create_context_robustness"))) {
+    attrs.insert(attrs.end(), {
+        egl15 ? EGL_CONTEXT_OPENGL_ROBUST_ACCESS : EGL_CONTEXT_OPENGL_ROBUST_ACCESS_EXT,
+        robust ? EGL_TRUE : EGL_FALSE,
+        egl15 ? EGL_CONTEXT_OPENGL_RESET_NOTIFICATION_STRATEGY : EGL_CONTEXT_OPENGL_RESET_NOTIFICATION_STRATEGY_EXT,
+        reset == 0x8252 ? EGL_LOSE_CONTEXT_ON_RESET : EGL_NO_RESET_NOTIFICATION});
+  } else if (robust) {
+    return false;
+  }
+  attrs.push_back(EGL_NONE);
+  eglBindAPI(EGL_OPENGL_ES_API);
+  g_r36sPresentContext = eglCreateContext(g_r36sPresentDisplay, config, producer, attrs.data());
+  if (g_r36sPresentContext == EGL_NO_CONTEXT) {
+    Log.error("R36S V025 share-context failed: ES {}.{} robust={} EGL=0x{:x}",
+              major, minor, static_cast<int>(robust), static_cast<unsigned>(eglGetError()));
+    return false;
+  }
+  Log.info("R36S V025 presenter: shared ES {}.{} robust={} config={} producerConfig={}",
+           major, minor, static_cast<int>(robust), configId, producerConfig);
+  return true;
+}
+
+bool present_gl_texture(uint32_t texture, uint32_t width, uint32_t height) {
+  if (!texture || !width || !height || !r36s_init_present_context()) return false;
+  const EGLDisplay savedDisplay = eglGetCurrentDisplay();
+  const EGLContext savedContext = eglGetCurrentContext();
+  const EGLSurface savedDraw = eglGetCurrentSurface(EGL_DRAW);
+  const EGLSurface savedRead = eglGetCurrentSurface(EGL_READ);
+  auto restore = [&]() {
+    SDL_GL_MakeCurrent(g_window, nullptr);
+    if (!eglMakeCurrent(savedDisplay, savedDraw, savedRead, savedContext)) {
+      Log.error("R36S V025 cannot restore producer EGL context: 0x{:x}",
+                static_cast<unsigned>(eglGetError()));
+      std::abort();
+    }
+  };
+  GLsync ready = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
+  if (!ready) return false;
+  glFlush();
+  if (!SDL_GL_MakeCurrent(g_window, static_cast<SDL_GLContext>(g_r36sPresentContext))) {
+    Log.error("R36S V025 SDL_GL_MakeCurrent: {}", SDL_GetError());
+    restore();
+    glDeleteSync(ready);
+    return false;
+  }
+  glWaitSync(ready, 0, GL_TIMEOUT_IGNORED);
+  glDeleteSync(ready);
+  bool ok = glIsTexture(texture);
+  bool attached = false;
+  if (ok) {
+    if (!g_r36sReadFbo) glGenFramebuffers(1, &g_r36sReadFbo);
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, g_r36sReadFbo);
+    glFramebufferTexture2D(GL_READ_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture, 0);
+    attached = true;
+    ok = glCheckFramebufferStatus(GL_READ_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE;
+  }
+  if (ok) {
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+    glDisable(GL_SCISSOR_TEST);
+    glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+    glBlitFramebuffer(0, 0, width, height, 0, g_windowSize.native_fb_height,
+                      g_windowSize.native_fb_width, 0, GL_COLOR_BUFFER_BIT, GL_LINEAR);
+    ok = glGetError() == GL_NO_ERROR;
+  }
+  if (attached)
+    glFramebufferTexture2D(GL_READ_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, 0, 0);
+  glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
+  for (GLenum error = glGetError(); error != GL_NO_ERROR; error = glGetError()) {
+    Log.error("R36S V025 presenter GL error: 0x{:x}", static_cast<unsigned>(error));
+    ok = false;
+  }
+  GLsync consumed = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
+  glFlush();
+  if (!consumed) {
+    Log.error("R36S V025 consumer fence unavailable");
+    std::abort();
+  }
+  if (ok && !SDL_GL_SwapWindow(g_window)) {
+    Log.error("R36S V025 SDL_GL_SwapWindow: {}", SDL_GetError());
+    ok = false;
+  }
+  restore();
+  glWaitSync(consumed, 0, GL_TIMEOUT_IGNORED);
+  glDeleteSync(consumed);
+  glFlush();
+  return ok;
+}
+#endif
