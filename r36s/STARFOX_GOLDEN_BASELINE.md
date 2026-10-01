@@ -164,6 +164,42 @@ The next isolated test ports only its independent pixel-format/alpha semantics:
 
 Do not combine this test with reflection-size or render-pass-fusion changes.
 
+
+### 2026-10-01 EFB-alpha hardware result and reflection-size test
+
+Build `c1d733f70d227c6f658a8f1d3b98e3b894c6e6ad` was tested on R36S.
+
+Hardware result:
+- staff-end effect spheres remain black in the staff acquisition cutscene
+- water still flashes while walking
+- reflective floor/materials still flicker while moving
+- German language remains correct
+- character models remain correct and stable
+
+The submitted run confirms the EFB-alpha backport is active but does not change the three unresolved visual symptoms.
+On map 7 the renderer still drops to roughly 5.7-6.4 retraces/s with about 125-144 ms render time while
+TexCopyConv itself remains around 1.6-1.8 ms averaged across the profiling window. This excludes EFB alpha as
+the root cause and shows that the expensive state occurs after/around the reflection users rather than in one
+isolated copy-conversion shader.
+
+Source-level correlation:
+- `updateReflectionTextures()` copies the full logical 640x480 EFB to two 320x240 targets every normal HUD-visible frame:
+  RGB565 `gNewShadowReflectionTexture` and Z8 `gNewShadowReflectionTexture2`
+- Aurora's render-scale path currently scales those destination targets again; at gameplay scale 0.6667,
+  the physical GPU copy becomes about 213x160 while the GXTexObj remains logically 320x240
+- water/reflection TEV code samples the RGB565 reflection target as its visible reflection source
+- when HUD is hidden, the normal reflection update at lightmap.c:665-667 is skipped, but later glow rendering
+  still runs; this precisely matches the observed cutscene-only static black staff-end spheres and suggests that
+  the staff symptom may be a stale/unfilled reflection target rather than the same movement-flicker mechanism
+
+Next isolated hardware test:
+- preserve only the exact Star Fox 640x480 -> 320x240 RGB565/Z8 reflection pair at native logical destination size
+- keep the gameplay EFB itself at 0.6667
+- do not change cutscene reflection update policy, TEV math, pass fusion, audio, language, or model fixes
+
+If water/floor behavior changes while the cutscene staff spheres remain black, treat those as two separate issues:
+dynamic reflection scaling versus cutscene stale-target initialization.
+
 ## Floor / reflection investigation after V053
 
 The unresolved symptom at V053:
