@@ -85,14 +85,43 @@ void fhNoteMapLoaded(int mapId) {
     "source-level dynamic R36S EFB scale",
 )
 
-# Preserve real-time pacing on the R36S when a heavy scene drops below 10 fps.
-# At normal gameplay rates this is inert; it only raises the original 6-frame cap.
-replace(
-    "game/src/main/pi_videoinit.c",
-    "    if (timeDelta > 6.0f) {\n        timeDelta = 6.0f;\n    }",
-    "    if (timeDelta > 10.0f) {\n        timeDelta = 10.0f;\n    }",
-    "R36S realtime frame-delta cap 6 -> 10",
-)
+# Restore V039/V053 cutscene real-time compensation exactly in source.
+# Retail gameplay keeps the original 6-frame cap. During scripted sequences only,
+# allow the real elapsed-frame delta to rise as high as 10 frames. The original
+# V039 helper wrapped waitNextFrame(), captured the pre-step remainder, and
+# recomputed timeDelta / oneOverTimeDelta / framesThisStep from gFrameElapsedMs.
+# Applying the conditional cap before the stock downstream calculations is
+# equivalent, without a runtime hook.
+video = root / "game/src/main/pi_videoinit.c"
+video_text = video.read_text()
+video_include_anchor = '#include "main/lightmap.h"\n'
+if '#include "main/objseq.h"\n' not in video_text:
+    if video_include_anchor not in video_text:
+        raise SystemExit("V039 cutscene sync: include anchor missing")
+    video_text = video_text.replace(
+        video_include_anchor,
+        video_include_anchor + '#include "main/objseq.h"\n',
+        1,
+    )
+
+timing_old = """    if (timeDelta > 6.0f) {
+        timeDelta = 6.0f;
+    }
+"""
+timing_new = """    if (timeDelta > 6.0f) {
+        if (getCurSeqNo() != 0) {
+            if (timeDelta > 10.0f) {
+                timeDelta = 10.0f;
+            }
+        } else {
+            timeDelta = 6.0f;
+        }
+    }
+"""
+if timing_old not in video_text:
+    raise SystemExit("V039 cutscene sync: stock timeDelta cap anchor missing")
+video.write_text(video_text.replace(timing_old, timing_new, 1))
+print("patched exact V039/V053 conditional cutscene timeDelta cap 6 -> 10")
 
 # Foxhollow v1.0.10: planar-reflection geometry can overflow Aurora's old 2 MiB
 # index stream. Keep the ARM renderer, but carry the upstream 8 MiB fix across.

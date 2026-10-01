@@ -21,11 +21,11 @@ Known-good architecture:
 - gameplay EFB scale: 0.6667 (~427x320), presented at 640x480
 - THP menu-fast RGBA decode
 - menu-only THP catch-up, max 3 movie frames per retrace
-- conditional cutscene timeDelta cap 6 -> 10
+- V039/V053 conditional cutscene real-time compensation: gameplay cap 6, scripted-sequence cap 10
 - Direct-GLES pipeline correctness fallback
 - blur feedback workaround
 - Spirit Vision safe fallback
-- audio, controls, RVZ, save/load and Start+Select exit working
+- 200 ms audio queue, controls, RVZ, save/load and Start+Select exit working
 
 V053 preload chain was:
 - libsfspiritfix.so
@@ -85,6 +85,23 @@ hard-coded V053 runtime hook addresses.
 - Aggressive global render-state forcing during V049-V051 diagnostics caused visual regressions.
 - Those aggressive state overrides were removed again.
 - V053 became the visual-safe reference.
+
+
+## 2026-10-01 hardware validation after source-level V053 recovery
+
+Build `7cb0227213c94d36596b8a32966abfdcb64630b2` confirmed:
+- black/temporarily missing character models are gone
+- no Direct-GLES `pipeline-lookup` errors were observed in the submitted run
+- water still flashes with incorrect colours
+- reflective floor still flickers while moving
+- gameplay and cutscenes still have performance drops; long cutscenes can accumulate audio lag
+
+Additional clean-rebuild discrepancies found against the original V053 package:
+- V039 cutscene sync had been reduced to a global cap-10 edit instead of the original cutscene-only elapsed-time compensation
+- clean audio queue was 120 ms instead of V053's proven 200 ms
+- Aurora ARM now performs adaptive heavy-scene driver re-probes even with `AURORA_GLES_DRIVER_PROBE=0`; use `AURORA_GLES_DRAW_BARRIER=0` to disable those diagnostics fully
+
+These are baseline-restoration fixes, not reflection experiments. Do not change the reflection shader/path in the same validation build.
 
 ## Floor / reflection investigation after V053
 

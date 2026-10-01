@@ -132,6 +132,10 @@ export FOXHOLLOW_USER_DIR="$CONFDIR/data"
 export FOXHOLLOW_CACHE_DIR="$CONFDIR/cache"
 export FOXHOLLOW_PRESENT=direct
 export AURORA_GLES_DRIVER_PROBE=0
+# Aurora ARM's newer adaptive probe can still re-run on heavier scenes even
+# when the startup probe count is zero. An explicit barrier override disables
+# auto-probing completely while keeping barriers off, matching the V053 intent.
+export AURORA_GLES_DRAW_BARRIER=0
 
 if [ "${FOXHOLLOW_PERFORMANCE:-1}" = 1 ]; then
   if [ -r "$cpu_governor_path" ]; then
@@ -159,6 +163,8 @@ fi
 echo "FOXHOLLOW_RENDER_SCALE=$FOXHOLLOW_RENDER_SCALE"
 echo "FOXHOLLOW_LANGUAGE=$FOXHOLLOW_LANGUAGE"
 echo "FOXHOLLOW_PRESENT=$FOXHOLLOW_PRESENT"
+echo "AURORA_GLES_DRIVER_PROBE=$AURORA_GLES_DRIVER_PROBE"
+echo "AURORA_GLES_DRAW_BARRIER=$AURORA_GLES_DRAW_BARRIER"
 echo "CPU_GOVERNOR=$(cat "$cpu_governor_path" 2>/dev/null || echo unavailable)"
 echo "GPU_GOVERNOR=$(cat "$gpu_governor_path" 2>/dev/null || echo unavailable)"
 
