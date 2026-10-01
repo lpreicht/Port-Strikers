@@ -512,3 +512,51 @@ Expected:
   the root cause
 - if unchanged, the problem is in the actual copied source/content or later blend/material semantics
 - a ring may also reduce Mali write-after-read stalls; observe water performance, but correctness is primary
+
+
+### 2026-10-01 three-slot reflection ring hardware result
+
+Build `8d2f987d275a065158447bd838254dd16c550f58` was tested on R36S.
+
+Hardware result:
+- water still blinks/flickers
+- no reported improvement
+
+The runtime log confirms the ring was active:
+- branch commit matches the ring build
+- menu reset created three slots
+- map 7 reset created three RGB565 slots at the scaled 214x160 size
+- revisions advanced through the ring (120, 240, 360...)
+Despite this, the map 7 water state still falls into roughly 5.2-7.3 retraces/s with render time around 103-142 ms.
+
+Conclusion:
+Queued read/write aliasing of one RGB565 GPU texture is not the primary flicker cause. Remove
+`starfox_reflection_ring_patch.py` from active builds.
+
+Additional source review corrected an earlier assumption: in
+`drawTexture(texture, 0, 0, 0xff, 0x40)`, 0xff is the alpha and 0x40 is the draw scale. The previous reflection
+is therefore not intentionally faded to 25 percent by that call.
+
+### Next isolated test: bypass previous-frame reflection feedback draw
+
+Star Fox starts `sceneDraw()` with `drawReflectionTexture()`, which:
+1. draws the previous large RGB565 reflection through the HUD-texture path
+2. copies an 80x60 RGB565 region to the small reflection target with `GXCopyTex(..., GX_TRUE)`
+3. continues with the fresh sky/world render
+4. later captures the new 320x240 RGB565/Z8 reflection pair
+
+The freeze test proved that holding the large reflection content constant stops the visible flicker. Ringing,
+completion sync, destination size, RGB565 precision, indirect TEV fixed-point behavior and EFB alpha did not.
+
+Diagnostic:
+- bypass only the initial `drawTexture(gNewShadowReflectionTexture, ...)` call
+- retain the 80x60 RGB565 copy and its GX_TRUE clear exactly as before
+- retain normal live 320x240 RGB565 and Z8 reflection updates later in the frame
+- restore ordinary Aurora copy texture allocation (no ring)
+- do not change render scale, TEV math, alpha, depth, copy format or water material
+
+Interpretation:
+- if water/floor stop flickering while live reflection updates remain, the recursive previous-frame feedback path
+  is the trigger
+- if flicker remains unchanged, the newly captured reflection content itself or the later water/material sampling
+  path is wrong
