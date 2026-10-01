@@ -378,3 +378,40 @@ Interpretation:
   fault is downstream in sampling/material/draw state
 - the black staff-end spheres are not the primary criterion because HUD-hidden/cutscene update policy may be a
   separate issue
+
+
+### 2026-10-01 reflection-freeze hardware result
+
+Build `ec8d67fe42334875b5c4ceeaca29ca9f83fbed2d` produced the first decisive reflection result on R36S.
+
+Observed on hardware:
+- the previously flickering reflective floor became stable and looked good
+- water stopped blinking, but became a permanently blue/static-looking surface and appeared no longer transparent
+- staff-ball / screen-feedback effects also became blue instead of their normal glitter/smoke-like appearance
+- performance still dropped heavily with water visible
+
+Interpretation:
+- stopping live `updateReflectionTextures()` updates removes the movement flicker
+- the freeze itself is not a valid final fix because the RGB565 screen-feedback texture is reused by water,
+  reflection, whirlpool/motion-screen effects, while the paired Z8 texture is used by distortion/depth-mask effects
+- `GXInvalidateTexAll()` cannot explain the result in the pinned Aurora source because it is a no-op
+- repeated `GXPixModeSync()` cannot explain it either: it rewrites PE control and unchanged BP writes are cached out
+- therefore the live RGB565/Z8 EFB-copy handoff is now the primary correctness target
+- water-area slowness remains separate: the hardware log shows very large draw/program/pipeline-state churn while
+  TexCopyConv itself is only a small fraction of total render time
+
+### Next isolated test: Dawn resolve -> direct-GLES handoff completion
+
+Return `updateReflectionTextures()` to normal every-frame behavior. Do not freeze either texture.
+
+Patch only the cross-API boundary in Aurora:
+- Star Fox writes RGB565 then Z8; the Z8 resolve marks the end of the reflection pair
+- tag the next game render pass after a Z8 resolve
+- at the start of that pass, before either Aurora direct-GLES replay or Dawn fallback, issue one `glFinish()`
+- do not enable global per-draw barriers and do not change reflection math, scale, alpha, depth or TEV
+- log `[r36s-reflection-handoff]` when the diagnostic sync fires
+
+Expected diagnostic:
+- if dynamic water/effects return and movement flicker disappears, stale/incomplete Dawn->direct-GLES visibility is
+  the root cause; replace glFinish later with the narrowest correct fence/barrier
+- if flicker returns unchanged, the copy contents themselves are wrong rather than merely not complete/visible
