@@ -560,3 +560,34 @@ Interpretation:
   is the trigger
 - if flicker remains unchanged, the newly captured reflection content itself or the later water/material sampling
   path is wrong
+
+
+### 2026-10-01 previous-frame reflection feedback-bypass hardware result
+
+Build `b8de312bcf633cbe8d679f5f83bbb5e5952bc665` was tested on R36S.
+
+Hardware result:
+- water still blinks while moving
+
+The runtime header confirms the intended diagnostic was active: previous-frame large reflection draw bypassed, while
+the small RGB565 copy/clear and the live 320x240 RGB565/Z8 updates remained enabled. In map 7 the same heavy water
+state remained, around 5.6-7.6 retraces/s and roughly 96-145 ms render time.
+
+Conclusion:
+The recursive previous-frame reflection feedback draw is not the root cause. Restore it for subsequent builds.
+
+Source review also narrows the water path:
+- `setupWaterReflectionTev()` binds `gNewShadowReflectionTexture` (RGB565) through `selectReflectionTexture(0)`
+- the Z8 reflection texture is not part of that water-reflection TEV setup
+Therefore the live RGB565 reflection content or its water/projective sampling path is now the primary branch to split.
+
+### Next isolated diagnostic: direct live-RGB565 overlay
+
+Restore the normal reflection path and render `getReflectionTexture1()` directly as a 160x120 upper-left overlay
+after scene rendering. The overlay uses the ordinary HUD texture draw and bypasses water/projective/indirect TEV.
+
+Interpretation:
+- overlay flickers while walking: the instability already exists in the EFB->RGB565 reflection copy/content
+- overlay remains stable while water flickers: the copy itself is stable and the bug is in water/projective/indirect
+  reflection sampling
+This is diagnostic only; it does not change reflection format, scale, timing, TEV math, or copy allocation.
