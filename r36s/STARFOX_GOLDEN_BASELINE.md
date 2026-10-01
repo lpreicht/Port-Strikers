@@ -468,3 +468,47 @@ Interpretation:
 - if it remains identical, restore the original shader and move to source-coordinate / blend-path investigation
 - water transparency should be evaluated separately; Star Fox's water path explicitly uses SRCALPHA/INVSRCALPHA,
   so persistent opacity after reflection correctness is solved indicates an additional alpha/blend issue
+
+
+### 2026-10-01 true RGB565 quantization hardware result
+
+Build `5b1522e2d647af6d6be538028ab5c88415d95afa` was tested on R36S.
+
+Hardware result:
+- water still flickers
+- reflective floor still flickers
+- no reported visual improvement
+
+The runtime log confirms the intended RGB565 quantization build was active. In map 7 the heavy-water state still
+drops to roughly 5.7-6.6 retraces/s with about 116-126 ms render time, while TexCopyConv remains only around
+1.8 ms. Therefore missing 5/6/5 color quantization is excluded as the primary flicker cause.
+
+Remove `starfox_rgb565_quantization_patch.py` from active builds.
+
+### Next isolated test: rotate the Star Fox RGB565 reflection copy across GPU images
+
+Aurora's ordinary CPU-streamed textures already use a three-slot GPU texture ring specifically so a new upload
+does not overwrite a texture that a queued frame still samples. EFB copy textures do not have equivalent
+version isolation: `copy_tex()` reuses one cached GPU handle for a destination pointer and increments only a
+revision counter.
+
+This matters for Star Fox because:
+- `drawReflectionTexture()` samples the previous RGB565 reflection early in the frame
+- later in the same frame `updateReflectionTextures()` writes a new RGB565 EFB copy to the same GX destination
+- water and transparent reflection materials then sample the newly written version
+- the freeze test removed flicker, while completion barriers and RGB565 precision did not
+
+Diagnostic:
+- restore original Aurora RGB565 conversion
+- keep normal every-frame reflection updates
+- only for exact 640x480 -> 320x240, RGB565, clear=false Star Fox reflection copies, rotate through three
+  independent GPU conversion textures
+- publish the newly written slot as `copyTextures[dest]`
+- earlier queued draws retain the older immutable GPU handle through their already-created bind groups
+- leave Z8 and every other copy path unchanged
+
+Expected:
+- if flicker disappears while reflection remains dynamic, queued read/write aliasing of one GPU copy texture is
+  the root cause
+- if unchanged, the problem is in the actual copied source/content or later blend/material semantics
+- a ring may also reduce Mali write-after-read stalls; observe water performance, but correctness is primary
