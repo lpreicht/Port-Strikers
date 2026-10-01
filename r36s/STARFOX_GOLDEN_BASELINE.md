@@ -129,6 +129,41 @@ For the next isolated reflection test, carry only the relevant GXCopyTex correct
 
 This is one conceptual change surface: GXCopyTex upstream parity. Preserve all proven V053 visual/timing fixes.
 
+
+### 2026-10-01 GXCopyTex parity hardware result
+
+Build `74edeeb86ef520a97586655ad8258d224b57c235` was tested on R36S.
+
+Result:
+- German language remains correct
+- audio remains synchronized
+- character models remain stable
+- water still flashes while walking; during scripted/cutscene presentation it is black but stable
+- reflective floor/materials still flicker
+- staff-end glow/smoke spheres remain black
+
+The GXCopyTex upstream-parity fix is therefore retained as a correctness fix but excluded as the root cause.
+
+Code correlation:
+- water reflection, reflection/distortion materials and the staff reflection effect all use the dynamic
+  `gNewShadowReflectionTexture` / indirect-TEV path
+- scripted/cutscene frames can skip `updateReflectionTextures()` while HUD-hidden, matching the observed
+  transition from dynamic flicker to static black
+- `GXInvalidateTexAll()` is a no-op in Aurora and does not evict the dynamic GPU copy
+- the reflection texture itself has no mip levels, so missing GXCopyTex mipmap generation is not the cause
+- the three affected effects use indirect TEV / alpha-bump behavior
+
+A second upstream Aurora correctness fix, `3840bf9ae735191026e4d4edb0ce6f24d91f7eea`
+("Fix GX EFB alpha handling"), also landed after the ARM direct-GLES fork's last upstream merge.
+The next isolated test ports only its independent pixel-format/alpha semantics:
+- RGB EFB formats do not accept alpha updates
+- DSTALPHA behaves as ONE when the EFB has no alpha
+- INVDSTALPHA behaves as ZERO when the EFB has no alpha
+- GX pixel-format changes invalidate the pipeline
+- GXCopyTex alpha clear is gated by actual EFB alpha capability
+
+Do not combine this test with reflection-size or render-pass-fusion changes.
+
 ## Floor / reflection investigation after V053
 
 The unresolved symptom at V053:
