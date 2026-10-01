@@ -103,6 +103,32 @@ Additional clean-rebuild discrepancies found against the original V053 package:
 
 These are baseline-restoration fixes, not reflection experiments. Do not change the reflection shader/path in the same validation build.
 
+
+## 2026-10-01 recovery validation and GXCopyTex upstream parity
+
+Build `5ec3dd62a2dccc0ff4109692b7037522b617a777` confirmed on R36S:
+- German language is active and should remain the default
+- cutscene/game audio is synchronized again with the restored 200 ms queue and V039/V053 timing
+- character models remain stable; the black/missing-model regression is fixed
+- some staff effects can still render partly black
+- water is visually unstable and causes a severe performance drop when visible
+- reflective materials/floor still flicker
+- title/menu remains slow before the first memory-card load and improves somewhat afterwards
+
+The submitted log contains no Direct-GLES pipeline-lookup failures, no pipeline-wait timeout and no Aurora driver-probe runs.
+In water/effect-heavy maps, the dominant cost is total render/TEV workload rather than one isolated TexCopyConv pass.
+
+A later upstream Aurora commit, `9c0bf66f1ed3276b60ad1cd746e2fb48818a6298` (2026-09-24,
+"Partial GXCopyTex clears & proper GXSetDstAlpha"), landed after the ARM direct-GLES branch's last upstream merge.
+The R36S fork still contains the pre-fix GXCopyTex behavior.
+
+For the next isolated reflection test, carry only the relevant GXCopyTex correctness fixes:
+- do not overwrite EFB alpha before resolving GXCopyTex
+- partial `GXCopyTex(..., GX_TRUE)` clears must clear only the copied rectangle, not the whole EFB
+- do not import the unrelated dual-source destination-alpha pipeline rewrite yet
+
+This is one conceptual change surface: GXCopyTex upstream parity. Preserve all proven V053 visual/timing fixes.
+
 ## Floor / reflection investigation after V053
 
 The unresolved symptom at V053:
