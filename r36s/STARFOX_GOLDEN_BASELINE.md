@@ -415,3 +415,56 @@ Expected diagnostic:
 - if dynamic water/effects return and movement flicker disappears, stale/incomplete Dawn->direct-GLES visibility is
   the root cause; replace glFinish later with the narrowest correct fence/barrier
 - if flicker returns unchanged, the copy contents themselves are wrong rather than merely not complete/visible
+
+
+### 2026-10-01 targeted reflection handoff sync hardware result
+
+Build `c9f2f4831e75778860e837a867c9e23c5026af7c` was tested on R36S.
+
+Hardware result:
+- water returned to the original broken behavior: colorful blinking while moving
+- reflective floor also returned to movement flicker
+- water performance remained essentially unchanged
+- user notes that water has never looked transparent in the R36S port, although original-game footage appears transparent
+
+The runtime log confirms the targeted handoff diagnostic actually fired after the Z8 reflection resolve, including
+in map 7. Therefore a simple incomplete/stale Dawn-copy -> direct-GLES visibility handoff is excluded as the
+primary flicker cause.
+
+Source-order review of `sceneDraw()` confirms Star Fox intentionally:
+1. draws opaque scene/world/objects
+2. calls `updateReflectionTextures()`
+3. then renders particles, water and transparent scene geometry
+
+This makes the screen reflection source timing in Foxhollow itself plausible.
+
+Further source correlation:
+- water reflection, reflection/distort materials and visible screen-feedback color all sample
+  `gNewShadowReflectionTexture` (the RGB565 EFB copy)
+- Z8 `gNewShadowReflectionTexture2` is used by separate depth/distortion paths and is not required to explain
+  the observed water/floor color flicker
+- `drawReflectionTexture()` draws the previous frame's RGB565 reflection texture back into the next frame with
+  alpha 0x40 before a new reflection copy is captured, so this is a real frame-feedback loop
+
+Aurora's `GX_TF_RGB565` conversion currently does not quantize to RGB565 at all: it copies full RGB precision
+into an RGBA8 GPU texture and only forces alpha to 1.0. This differs from GameCube hardware semantics exactly in
+a texture that Star Fox recursively feeds back.
+
+### Next isolated test: true RGB565 copy quantization
+
+Remove the failed handoff `glFinish()` diagnostic and restore normal live reflection updates.
+
+Patch only `FragRGB565` in Aurora's EFB copy conversion:
+- R -> round to 5 bits
+- G -> round to 6 bits
+- B -> round to 5 bits
+- alpha remains 1.0
+- destination GPU representation remains RGBA8; only the observable copied values change to GX RGB565 precision
+
+Do not change Z8, reflection update cadence, render scale, TEV math, blend state, depth, audio, language or model fixes.
+
+Interpretation:
+- if movement flicker changes materially, RGB565 feedback precision is involved
+- if it remains identical, restore the original shader and move to source-coordinate / blend-path investigation
+- water transparency should be evaluated separately; Star Fox's water path explicitly uses SRCALPHA/INVSRCALPHA,
+  so persistent opacity after reflection correctness is solved indicates an additional alpha/blend issue
