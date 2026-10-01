@@ -125,10 +125,11 @@ jobs:
           python "$GITHUB_WORKSPACE/r36s/starfox_clean_visual_patch.py" "$PWD"
           python "$GITHUB_WORKSPACE/r36s/starfox_copytex_correctness_patch.py" "$PWD"
           python "$GITHUB_WORKSPACE/r36s/starfox_efb_alpha_patch.py" "$PWD"
-          python "$GITHUB_WORKSPACE/r36s/starfox_reflection_native_size_patch.py" "$PWD"
-          echo "=== Star Fox reflection native-size verification ==="
-          grep -n 'r36sStarfoxReflectionCopy' extern/aurora/lib/dolphin/gx/GXFrameBuffer.cpp
-          grep -n 'about 213x160' extern/aurora/lib/dolphin/gx/GXFrameBuffer.cpp
+          python "$GITHUB_WORKSPACE/r36s/starfox_indirect_fixedpoint_patch.py" "$PWD"
+          echo "=== GX indirect fixed-point parity verification ==="
+          grep -n 'R36S GX fixed-point parity' extern/aurora/lib/gx/shader.cpp
+          grep -n 'GX indirect samples are 8-bit' extern/aurora/lib/gx/shader.cpp
+          grep -n 'GX signed-24 TEV coordinate wrap' extern/aurora/lib/gx/shader.cpp
           echo "=== EFB-alpha upstream-parity verification ==="
           grep -n 'constexpr bool efb_has_alpha' extern/aurora/lib/gx/gx.hpp
           grep -n 'const bool hasAlpha = efb_has_alpha' extern/aurora/lib/gx/gx.cpp
@@ -298,7 +299,7 @@ jobs:
             echo "Reflection path: 8 MiB planar-reflection index stream; ARM fast B8 copy retained; reflection copies every frame"
             echo "GXCopyTex correctness: upstream 9c0bf66 copy parity; no pre-copy dst-alpha overwrite; partial clears scoped to copy rectangle"
             echo "EFB alpha semantics: upstream 3840bf9 subset; no alpha updates on RGB EFB; DSTALPHA=1 / INVDSTALPHA=0; pixel-format changes rebuild pipeline"
-            echo "Reflection size test: exact Star Fox 640x480 -> 320x240 RGB565/Z8 reflection pair bypasses destination render-scale reduction"
+            echo "Indirect TEV parity test: GX-style 8-bit indirect samples, 1/128-texel coordinates and signed-24 accumulator wrap"
             echo "Stream uploads: mapped GL streams enabled (restored V053 setting)"
             echo "V053 visual safety: white missing-vertex-color fallback; global blur EFB-feedback bypass; Spirit Vision postprocess only outside scripted sequences"
             echo "Timing/performance: V039/V053 cutscene-only timeDelta cap 6 -> 10; menu direct-RGBA THP; menu stale-frame catch-up; V053-style direct-draw pipeline correctness wait"

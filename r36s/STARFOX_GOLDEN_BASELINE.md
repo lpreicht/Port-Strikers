@@ -200,6 +200,48 @@ Next isolated hardware test:
 If water/floor behavior changes while the cutscene staff spheres remain black, treat those as two separate issues:
 dynamic reflection scaling versus cutscene stale-target initialization.
 
+
+### 2026-10-01 native 320x240 reflection-copy hardware result
+
+Build `4c9bb18f45add43bea7e260a36ca09ee527adc51` was tested on R36S.
+
+Hardware result:
+- water still flashes exactly as before while walking
+- reflective floor/materials still flicker while moving
+- performance is effectively unchanged; at most subjectively a very small improvement
+- staff-end effect spheres in the acquisition cutscene remain black
+- German language and model stability remain intact
+
+The log confirms the native-size path was active. In map 7 the port still falls from about 23 retraces/s immediately
+after load to roughly 6.3-6.5 retraces/s with about 124-127 ms render time, while TexCopyConv is only around
+1.8 ms. Later samples still reach about 5.5 retraces/s and 135 ms render time. Therefore the 320x240 destination
+downscale mismatch is excluded as the visual root cause and provides no meaningful performance benefit.
+
+Do not apply `starfox_reflection_native_size_patch.py` in subsequent builds unless a new reason appears.
+
+### Next isolated test: GX indirect-TEV fixed-point parity
+
+Source comparison against current Dolphin GX emulation found a concrete semantics gap:
+- Dolphin quantizes generated TEV texture coordinates to 1/128 texel before indirect texturing
+- Dolphin samples indirect textures back into integer 0..255 values
+- Dolphin applies indirect TEV coordinate arithmetic in fixed-point form and explicitly emulates signed 24-bit
+  coordinate accumulator overflow
+- Aurora ARM currently carries these values through the corresponding path mostly as unrestricted floats
+
+Star Fox's water and reflection/distortion materials make heavy use of `GXSetTevIndirect` with `GX_ITF_8`,
+`GX_ITB_STU`, indirect matrices and bump-alpha channels, so camera movement can repeatedly cross the exact
+quantization boundaries where the implementations differ.
+
+Next test scope:
+- restore normal scaled reflection-copy behavior (remove the prior native-size experiment)
+- quantize the indirect-stage input coordinate to 1/128 texel
+- quantize indirect texture samples to GX-style 8-bit values
+- quantize/wrap the TEV indirect coordinate accumulator to signed 24-bit fixed point after each indirect stage
+- leave copy format, EFB alpha, depth, pass fusion, language, audio, V053 visual safety and model fixes unchanged
+
+This is a renderer-semantics test for water/floor movement flicker. Do not require the cutscene staff spheres to
+change; those may be a separate generic glow/particle or HUD-hidden reflection-initialization issue.
+
 ## Floor / reflection investigation after V053
 
 The unresolved symptom at V053:
