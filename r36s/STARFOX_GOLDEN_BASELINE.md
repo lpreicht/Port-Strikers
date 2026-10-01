@@ -44,6 +44,27 @@ Representative V053 performance:
 
 Do not accept a new build as an improvement if it materially regresses these timings.
 
+## Verified V053 package recovered on 2026-10-01
+
+The original `starfoxadventures-r36s-v053-visual-safe.zip` is now available and was inspected directly.
+It removes ambiguity about the old visual-safe behavior.
+
+Verified runtime hashes from that package:
+- `foxhollow.aarch64`: `a6e2733cbb161355dff22e917a18fac74b7f106dadf75206927b1779a5c43c6a`
+- `libsfblurfix.so`: `517ff6444bc5216672b3b91bb97a8408ed5547682a335a39dd11f94ca462bab8`
+- `libsfspiritfix.so`: `01cb97303fb855e95c0d4bc376c4bf9938903aa8a83911b32d30ff4e258bffb0`
+- `libsfpipelinewait.so`: `c4a47617f0f723445defe88ec2da2edd6db7f6d03e1d124fea6435725c8fc53c`
+
+Recovered visual-safe semantics:
+- missing `GX_VA_CLR0/GX_VA_CLR1` defaults to white `vec4(1,1,1,1)`, not black
+- `doBlurFilter` is suppressed globally
+- `doSpiritVisionFilter` is bypassed only while a scripted sequence is active (`curSeqNo != 0`)
+- mapped GL streams are enabled
+- Direct-GLES pipeline correctness waiting is draw-local, not a generic blocking `get_pipeline()` wait
+
+The clean GitHub build must implement these semantics in source rather than reusing the old
+hard-coded V053 runtime hook addresses.
+
 ## Major progress before V053
 
 ### Early native builds

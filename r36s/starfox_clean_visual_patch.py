@@ -125,4 +125,64 @@ else:
 # B8 conversion. Planar-reflection support remains handled independently by the
 # 8 MiB index stream above.
 
+
+# ---------------------------------------------------------------------------
+# V053 visual-safe restoration from verified package
+# ---------------------------------------------------------------------------
+# The uploaded V053 package proves three independent visual-safety rules that
+# were not all carried into the first clean GitHub rebuild. Preserve their exact
+# semantics in source so the clean build does not depend on old hard-coded ELF
+# hook addresses.
+
+# V051/V053: when GX_CLR0/GX_CLR1 is absent, the generated shader must use white.
+# Black here can turn otherwise valid uncoloured models/effects completely dark.
+replace(
+    "extern/aurora/lib/gx/shader.cpp",
+    '      return "vec4f(0.0, 0.0, 0.0, 0.0)"s;\n',
+    '      return "vec4f(1.0, 1.0, 1.0, 1.0)"s;\n',
+    "V053 missing vertex-color fallback white",
+)
+
+# V048/V053: doBlurFilter is globally suppressed. The retail path copies the
+# EFB and immediately samples it again; on the R36S Direct-GLES path this was
+# the proven trigger for black/post-cutscene rendering regressions.
+lightmap = root / "game/src/main/lightmap.c"
+lightmap_text = lightmap.read_text()
+include_anchor = '#include "main/lightmap_internal.h"\n'
+if '#include "main/objseq.h"\n' not in lightmap_text:
+    if include_anchor not in lightmap_text:
+        raise SystemExit("V053 visual safe: lightmap include anchor missing")
+    lightmap_text = lightmap_text.replace(
+        include_anchor,
+        include_anchor + '#include "main/objseq.h"\n',
+        1,
+    )
+
+blur_old = """    if (bEnableBlurFilter != 0) {
+        doBlurFilter(blurFilterX, blurFilterY, blurFilterZ, bBlurFilterUseArea, bBiggerBlurFilter);
+    }
+"""
+blur_new = """    /* R36S V048/V053 visual-safe: global doBlurFilter EFB-feedback bypass. */
+"""
+if blur_old not in lightmap_text:
+    raise SystemExit("V053 visual safe: doBlurFilter call site not found")
+lightmap_text = lightmap_text.replace(blur_old, blur_new, 1)
+
+# V053: Spirit Vision is kept for normal gameplay, but skipped while a scripted
+# sequence is active. This preserves the scene while avoiding the unsafe
+# EFB-copy -> immediate-sample fullscreen feedback pass in cutscenes.
+spirit_old = """    } else if (bEnableSpiritVision != 0) {
+        doSpiritVisionFilter();
+    }
+"""
+spirit_new = """    } else if (bEnableSpiritVision != 0 && getCurSeqNo() == 0) {
+        doSpiritVisionFilter();
+    }
+"""
+if spirit_old not in lightmap_text:
+    raise SystemExit("V053 visual safe: Spirit Vision call site not found")
+lightmap_text = lightmap_text.replace(spirit_old, spirit_new, 1)
+lightmap.write_text(lightmap_text)
+print("patched V053 global blur bypass and cutscene-only Spirit Vision bypass")
+
 print("Star Fox clean R36S source patches applied successfully")
