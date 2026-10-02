@@ -1060,3 +1060,34 @@ Permanent fix:
 - if another true Dawn consumer exists in a frame, preserve the normal full-stream upload path
 
 This retains the known-correct uniform semantics while reducing the extra upload to the smallest safe batching granularity.
+
+
+### 2026-10-02 Targeted reflection uniform-window build — WATER CORRECT, intermittent black models
+
+Build `bdcb7f5c369bc59955b80217af993ef1c7a6a874` was tested on R36S.
+
+Hardware result:
+- reflection/water remains correct
+- performance is slightly better than the full-uniform diagnostic
+- Fox, dinosaurs and backpack/materials can intermittently become completely black for a short time, then recover
+
+Log observations:
+- no Direct-GLES GL errors were reported
+- the targeted reflection mirror varies substantially by scene, from roughly 43-44 windows to 120 windows
+- mapped uniform, index and vertex streams remain enabled globally
+- the existing mapped-stream implementation already uses explicit `glFlushMappedBufferRange` for uniform/index/vertex ranges
+
+Conclusion:
+- adding another mapped-buffer flush is not a meaningful next step
+- the known-bad mapped-uniform path is likely affecting ordinary model/material draws too, not only the reflection source
+- keep the fast mapped geometry streams, but remove mapped uniforms from Direct-GLES consumption entirely
+
+### Uniform-safe mapped streams
+
+New policy:
+- all Direct-GLES GX draws bind Dawn's normal uniform buffer
+- the frame uniform stream is uploaded to Dawn whenever Direct-GLES needs uniforms
+- persistently mapped vertex and index buffers remain enabled and are not copied unless an actual Dawn consumer requires them
+- no reflection-specific uniform routing remains necessary
+
+This is intended as the robust R36S/Mali-G31 compatibility mode: safe uniforms, fast geometry streams.
