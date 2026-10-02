@@ -1001,3 +1001,30 @@ Test:
 Interpretation:
 - water correct: corruption is entirely in mapped vertex and/or uniform data; index can stay fast in the final fix
 - water flickers: correctness requires an interaction involving the index stream too; test paired combinations next
+
+
+### 2026-10-02 Dawn vertex+uniform reflection result — WATER CORRECT
+
+Build `07094b917227812c909a21bcc0cc0a39f290284b` was tested on R36S.
+
+Hardware result:
+- water/reflection is correct
+- runtime confirms the relevant 427x320 reflection-source pass uses Dawn vertex+uniform while the index stream remains mapped
+- therefore the mapped index stream is fully excluded from the root cause
+- the corruption is now localized to mapped vertex data, mapped uniform data, or both
+
+Performance:
+- correctness is retained but the reflection-heavy scene still pays the cost of uploading both vertex and uniform frame streams
+- isolating the smaller uniform stream first gives the best possible low-cost outcome
+
+### Next isolation: Dawn uniform only
+
+Test:
+- reflection source remains Direct-GLES
+- only the uniform stream is uploaded to Dawn and bound through GL interop for the reflection pass
+- vertex and index remain on persistently mapped GL storage
+- all other passes retain the existing mapped-stream fast path
+
+Interpretation:
+- water correct: mapped uniform visibility/coherency is the root cause; final fix can keep mapped vertex+index and upload only uniform data
+- water flickers: mapped uniform alone is insufficient; next test Dawn vertex only
