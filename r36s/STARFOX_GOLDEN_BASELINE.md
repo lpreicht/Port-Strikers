@@ -703,3 +703,37 @@ Interpretation:
 - correct reflection with much better performance: keep the targeted publish barrier and remove the overlay
 - flicker returns: the visibility operation is stronger than a memory barrier; next test targeted glFinish at the
   same pre-resolve boundary, not a broad/global finish
+
+
+### 2026-10-02 targeted framebuffer/texture memory-barrier hardware result — insufficient
+
+Build `070d591a9164bd4d3cf5bea174ddecfbeff5822b` was tested on R36S.
+
+Hardware result:
+- water is again rendered incorrectly / flickers
+- the runtime confirms the targeted Direct-GLES reflection publish path is active
+- the publish hook fires for the large RGB565 resolve at scaled sizes including 320x240 and 427x320
+
+Conclusion:
+- `glMemoryBarrier(GL_FRAMEBUFFER_BARRIER_BIT | GL_TEXTURE_UPDATE_BARRIER_BIT | GL_TEXTURE_FETCH_BARRIER_BIT)`
+  is not sufficient for this Mali-G31 Direct-GLES -> Dawn EFB handoff
+- the earlier Dawn-only source-pass result remains the correctness control: when the same source pass is kept out of
+  Direct-GLES, water/reflection and the staff-end effect are correct
+- do not reopen RGB565 conversion, EFB alpha, water TEV, lightmap, polygon-offset or generic barrier hypotheses
+
+### Next isolated diagnostic: targeted glFinish at the same handoff
+
+Keep the large reflection-source pass on Direct-GLES for performance, but replace only the failed targeted memory
+barrier with `glFinish()` immediately after replaying that full-size RGB565 resolve source pass and before Dawn
+performs GXCopyTex.
+
+This is deliberately localized:
+- no global `glFinish()`
+- no broad per-pass finish
+- all unrelated Direct-GLES passes remain unchanged
+- mapped streams, V053 visual-safety fixes, audio queue, timing and current GXCopyTex/EFB semantics remain unchanged
+
+Interpretation:
+- correct water/reflection: Mali needs completion, not only memory visibility, at the Direct-GLES -> Dawn boundary
+- incorrect water/reflection: Direct-GLES source rendering itself differs from Dawn; the next fix must keep a selective
+  Dawn fallback or split/replace the problematic Direct-GLES pass rather than add more synchronization
