@@ -107,11 +107,25 @@ jobs:
         shell: bash
         run: |
           set -euxo pipefail
-          git clone https://github.com/JackPriceBurns/foxhollow.git foxhollow-src
+          retry_clone() {
+            local dest="$1"
+            shift
+            local attempt
+            for attempt in 1 2 3 4; do
+              rm -rf "$dest"
+              if git clone "$@" "$dest"; then
+                return 0
+              fi
+              echo "clone attempt $attempt failed for $dest" >&2
+              sleep $((attempt * 2))
+            done
+            return 1
+          }
+          retry_clone foxhollow-src https://github.com/JackPriceBurns/foxhollow.git
           cd foxhollow-src
           git checkout 51c0deb7be83e8d5a9961f018dd34c8e0022e062
           rm -rf extern/aurora
-          git clone --branch gles-direct-submission --single-branch https://github.com/zalo/aurora-arm.git extern/aurora
+          retry_clone extern/aurora --branch gles-direct-submission --single-branch https://github.com/zalo/aurora-arm.git
           git -C extern/aurora checkout 73aa291b0444ab7970e7e77b7faf5ec636c36c65
           echo "Aurora ARM direct-GLES commit: $(git -C extern/aurora rev-parse HEAD)"
           python "$GITHUB_WORKSPACE/r36s/offscreen_patch.py" "$PWD"
