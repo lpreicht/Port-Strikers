@@ -872,3 +872,37 @@ diagnostic remains active.
 Interpretation:
 - water correct: Mali-G31 vertex binding offsets/state in the fast ES 3.1 path are corrupting the reflection source
 - water still flickers: vertex binding is excluded; next isolate indexed draw API
+
+
+### 2026-10-02 reflection-source vertex-pointer hardware result — no effect
+
+Build `a82bbf38d1df81f1a11c1f3568b50a0bca494603` was tested on R36S.
+
+Hardware result:
+- water flicker is unchanged
+- runtime confirms Dawn-style `glVertexAttribPointer` is active in the relevant 427x320 reflection-source pass
+- the sampled map-7 source pass still contains roughly 294 GX draws plus one clear
+- performance remains in the same severe reflection-heavy range
+
+Conclusion:
+- ES 3.1 vertex binding offsets/state are not the root cause
+- remove the vertex-pointer diagnostic from the active path
+- `sortOpaqueDraws` is not a candidate in this build: Aurora documents it as off by default and Foxhollow's
+  R36S config does not enable it
+
+### Next isolated diagnostic: plain indexed draws in reflection source pass
+
+Direct-GLES normally uses `glDrawRangeElements` for single-instance indexed draws. Aurora already exposes
+`AURORA_GLES_INDEX_DRAW=plain|instanced` specifically to diagnose driver differences in range-index handling.
+
+Test only the large RGB565 reflection-source pass with plain `glDrawElements`; all other passes keep the current
+`glDrawRangeElements` path. No sampler, clear, vertex-pointer, barrier or overlay diagnostic remains active.
+
+Passive diagnostic added in the same build:
+- if the reflection-source pass encounters `GX_BM_LOGIC`, log the concrete GX logic op once
+- this does not alter rendering and will tell us immediately whether Direct-GLES's incomplete logic-op emulation
+  is relevant if the indexed-draw test fails
+
+Interpretation:
+- water correct: Mali-G31 range-index handling is corrupting the reflection-source pass
+- water still flickers: indexed draw API is excluded; inspect the passive logic-op evidence next
