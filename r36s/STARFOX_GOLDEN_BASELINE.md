@@ -906,3 +906,37 @@ Passive diagnostic added in the same build:
 Interpretation:
 - water correct: Mali-G31 range-index handling is corrupting the reflection-source pass
 - water still flickers: indexed draw API is excluded; inspect the passive logic-op evidence next
+
+
+### 2026-10-02 reflection-source plain indexed-draw hardware result — no effect
+
+Build `c7b104d98d6423dd7023c9d9f665e8e99aab64b2` was tested on R36S.
+
+Hardware result:
+- water flicker is unchanged
+- runtime confirms plain `glDrawElements` is active for the reflection-source diagnostic
+- the sampled map-7 reflection source reaches roughly 355 GX draws plus one clear
+- no `[r36s-reflection-logic]` marker appears anywhere in the hardware log
+
+Conclusion:
+- `glDrawRangeElements` / index-range handling is not the root cause
+- GX logic-op emulation is not relevant to this scene
+- remove the indexed-draw and logic-op diagnostics from the active path
+
+### Next isolated diagnostic: Direct-GLES with Dawn-backed frame streams
+
+The strongest remaining structural difference is how Direct-GLES consumes per-frame data:
+- normal Direct-GLES binds uniform, vertex and index data from persistently mapped GL buffers
+- the known-correct Dawn fallback consumes the normal Dawn/WebGPU buffers
+
+Test:
+- keep the large RGB565 reflection-source pass on Direct-GLES
+- preserve the normal fast mapped-stream path for every other Direct-GLES pass
+- force the frame's vertex/index/uniform streams to be uploaded to Dawn buffers
+- only while replaying the reflection-source pass, bind Dawn's GL-interop vertex/index/uniform buffers
+- keep pipelines, texture binding, draw calls, clears and all other Direct-GLES semantics unchanged
+
+Interpretation:
+- water correct: Mali-G31 mapped-stream coherency/visibility under the heavy reflection pass is the source corruption
+- water still flickers: mapped streams are excluded; the remaining mismatch is Direct-GLES fixed-function/dynamic
+  state or command semantics rather than frame-buffer transport
