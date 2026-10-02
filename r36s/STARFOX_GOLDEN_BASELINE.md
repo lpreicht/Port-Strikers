@@ -737,3 +737,38 @@ Interpretation:
 - correct water/reflection: Mali needs completion, not only memory visibility, at the Direct-GLES -> Dawn boundary
 - incorrect water/reflection: Direct-GLES source rendering itself differs from Dawn; the next fix must keep a selective
   Dawn fallback or split/replace the problematic Direct-GLES pass rather than add more synchronization
+
+
+### 2026-10-02 targeted glFinish hardware result — no effect
+
+Build `2853c69fe093e6e5294de6ceca9f035d440fe596` was tested on R36S.
+
+Hardware result:
+- water continues to flicker exactly as before
+
+Conclusion:
+- explicit GPU completion at the Direct-GLES -> Dawn RGB565 resolve boundary is not the missing requirement
+- both the targeted memory barrier and targeted glFinish hypotheses are closed
+- the Direct-GLES rendering of the source pass itself differs semantically from Dawn
+
+### Next isolated diagnostic: restore dynamic GX state after reflection-pass clear
+
+Source review found a concrete Direct-GLES semantic mismatch. `render_clear()` changes:
+- viewport to the full render target
+- depth range to `d.depth, d.depth`
+- scissor to the full render target
+
+It invalidates fixed-function pipeline memos, but it does not restore those three dynamic states before subsequent
+draws. The large RGB565 reflection source pass contains both a GX clear and many subsequent GX draws.
+
+Test:
+- keep the reflection-source pass on Direct-GLES
+- remove the failed targeted glFinish
+- track the most recent GX viewport/depth range/scissor while replaying that pass
+- immediately after a GX clear, restore those dynamic states
+- leave all unrelated passes and renderer settings unchanged
+
+Interpretation:
+- water/reflection correct: Direct-GLES clear-state leakage was the root source-content bug
+- water/reflection still wrong: keep the Dawn-only correctness baseline and continue comparing Direct-GLES state
+  semantics against Dawn rather than synchronization/copy-format hypotheses
