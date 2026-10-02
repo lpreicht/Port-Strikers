@@ -973,3 +973,31 @@ Test:
 Interpretation:
 - water correct: mapped index-stream visibility/coherency is the root cause; retain a targeted index-only fix and optimize its upload range
 - water flickers again: index alone is insufficient; next test Dawn vertex only, then Dawn uniform only
+
+
+### 2026-10-02 Dawn index-only reflection result — FLICKER RETURNS
+
+Build `8e4d3998f5712f64434eea0f1f4ac990d6842692` was tested on R36S.
+
+Hardware result:
+- water flicker returns unchanged
+- runtime confirms the 427x320 reflection-source pass uses Dawn's index buffer only
+- mapped vertex and uniform streams remain active
+- therefore the mapped index stream is not sufficient to explain the corruption
+
+Conclusion:
+- index-only hypothesis rejected
+- because Dawn vertex+index+uniform together is known-correct, next split removes the index variable entirely:
+  use Dawn vertex+uniform together while keeping the index stream mapped
+
+### Next isolation: Dawn vertex + uniform, mapped index
+
+Test:
+- reflection source remains Direct-GLES
+- vertex and uniform frame streams are uploaded to Dawn and bound through GL interop only in the reflection pass
+- index data stays on the normal persistently mapped GL stream
+- all other passes retain the normal mapped-stream path
+
+Interpretation:
+- water correct: corruption is entirely in mapped vertex and/or uniform data; index can stay fast in the final fix
+- water flickers: correctness requires an interaction involving the index stream too; test paired combinations next
