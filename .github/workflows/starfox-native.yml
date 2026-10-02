@@ -125,13 +125,11 @@ jobs:
           python "$GITHUB_WORKSPACE/r36s/starfox_clean_visual_patch.py" "$PWD"
           python "$GITHUB_WORKSPACE/r36s/starfox_copytex_correctness_patch.py" "$PWD"
           python "$GITHUB_WORKSPACE/r36s/starfox_efb_alpha_patch.py" "$PWD"
-          python "$GITHUB_WORKSPACE/r36s/starfox_reflection_clear_state_patch.py" "$PWD"
-          echo "=== Star Fox reflection clear-state restoration verification ==="
+          python "$GITHUB_WORKSPACE/r36s/starfox_reflection_glclear_patch.py" "$PWD"
+          echo "=== Star Fox reflection glClear diagnostic verification ==="
           grep -n 'r36sReflectionResolve' extern/aurora/lib/gfx/gles_direct.cpp
-          grep -n 'r36s-reflection-clear-restore' extern/aurora/lib/gfx/gles_direct.cpp
+          grep -n 'r36s-reflection-clear-restore' extern/aurora/lib/gfx/gles_direct.cpp\n          grep -n 'r36s-reflection-glclear' extern/aurora/lib/gfx/gles_direct.cpp
           grep -n 'r36sReflectionResolve' extern/aurora/lib/gfx/gles_direct.cpp
-          grep -n 'direct view of the normal live RGB565 reflection' game/src/main/lightmap.c
-          grep -n 'drawTexture(r36sReflection, 0.0f, 0.0f, 0xff, 0x80)' game/src/main/lightmap.c
           grep -n 'drawTexture(texture, 0.0f, 0.0f, 0xff, 0x40)' game/src/main/newshadows.c
           echo "=== EFB-alpha upstream-parity verification ==="
           grep -n 'constexpr bool efb_has_alpha' extern/aurora/lib/gx/gx.hpp
@@ -302,7 +300,7 @@ jobs:
             echo "Reflection path: 8 MiB planar-reflection index stream; ARM fast B8 copy retained; RGB565/Z8 copies update every frame"
             echo "GXCopyTex correctness: upstream 9c0bf66 copy parity; no pre-copy dst-alpha overwrite; partial clears scoped to copy rectangle"
             echo "EFB alpha semantics: upstream 3840bf9 subset; no alpha updates on RGB EFB; DSTALPHA=1 / INVDSTALPHA=0; pixel-format changes rebuild pipeline"
-            echo "Reflection diagnostic: large RGB565 reflection source pass on Direct-GLES; restore GX viewport/depth/scissor after reflection-pass clears; one live reflection overlay"
+            echo "Reflection diagnostic: large RGB565 reflection source pass on Direct-GLES; restore GX dynamic state after clears; force real glClear only for reflection-source clear; no live overlay"
             echo "Stream uploads: mapped GL streams enabled (restored V053 setting)"
             echo "V053 visual safety: white missing-vertex-color fallback; global blur EFB-feedback bypass; Spirit Vision postprocess only outside scripted sequences"
             echo "Timing/performance: V039/V053 cutscene-only timeDelta cap 6 -> 10; menu direct-RGBA THP; menu stale-frame catch-up; V053-style direct-draw pipeline correctness wait"

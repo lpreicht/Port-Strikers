@@ -772,3 +772,35 @@ Interpretation:
 - water/reflection correct: Direct-GLES clear-state leakage was the root source-content bug
 - water/reflection still wrong: keep the Dawn-only correctness baseline and continue comparing Direct-GLES state
   semantics against Dawn rather than synchronization/copy-format hypotheses
+
+
+### 2026-10-02 reflection clear-state restoration hardware result — no effect
+
+Build `aa78786aa10e760b8c57ab74642f12f6053d4a82` was tested on R36S.
+
+Hardware result:
+- water still flickers
+- the live upper-left reflection overlay still flickers in the same way
+- the runtime confirms viewport/depth-range/scissor restoration executes on the relevant 427x320 reflection pass
+- no Direct-GLES runtime errors are reported
+
+Conclusion:
+- dynamic-state leakage from the GX clear is not the root cause
+- because the direct overlay and water still match, the bad/changing content remains upstream in the reflection-source EFB pass
+- remove the live reflection overlay from subsequent builds; it has completed its diagnostic purpose
+
+### Next isolated diagnostic: real glClear for reflection-source GX clear
+
+Direct-GLES normally emulates GX clears by drawing a fullscreen triangle. Aurora already contains a diagnostic
+`AURORA_GLES_CLEAR=gl` path specifically for drivers that can mishandle the triangle's tile coverage.
+
+Test only the reflection-source pass:
+- keep Direct-GLES for the full pass
+- keep the tested viewport/depth-range/scissor restoration
+- use real `glClear()` instead of the fullscreen-triangle clear only when the large RGB565 reflection-source pass clears
+- remove the upper-left live reflection overlay
+- leave every unrelated pass and performance setting unchanged
+
+Interpretation:
+- water correct: the Direct-GLES triangle-clear path is corrupting/staling the reflection source on Mali-G31
+- water still flickers: clear implementation is excluded and the next split should target Direct-GLES draw/resource semantics
