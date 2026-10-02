@@ -128,7 +128,8 @@ jobs:
           python "$GITHUB_WORKSPACE/r36s/starfox_reflection_glclear_patch.py" "$PWD"
           echo "=== Star Fox reflection glClear diagnostic verification ==="
           grep -n 'r36sReflectionResolve' extern/aurora/lib/gfx/gles_direct.cpp
-          grep -n 'r36s-reflection-clear-restore' extern/aurora/lib/gfx/gles_direct.cpp\n          grep -n 'r36s-reflection-glclear' extern/aurora/lib/gfx/gles_direct.cpp
+          grep -n 'r36s-reflection-clear-restore' extern/aurora/lib/gfx/gles_direct.cpp
+          grep -n 'r36s-reflection-glclear' extern/aurora/lib/gfx/gles_direct.cpp
           grep -n 'r36sReflectionResolve' extern/aurora/lib/gfx/gles_direct.cpp
           grep -n 'drawTexture(texture, 0.0f, 0.0f, 0xff, 0x40)' game/src/main/newshadows.c
           echo "=== EFB-alpha upstream-parity verification ==="
