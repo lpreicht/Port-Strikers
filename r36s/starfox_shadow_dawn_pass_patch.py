@@ -6,6 +6,35 @@ root = Path(sys.argv[1] if len(sys.argv) > 1 else ".").resolve()
 p = root / "extern/aurora/lib/gfx/gles_direct.cpp"
 s = p.read_text()
 
+old = """bool encode_pass_resources(const wgpu::RenderPassEncoder& encoder, RenderPass& pass, std::string_view label) {
+  pass.directLabel = label;
+  if (!sEnabled || pass.msaaSamples != 1 || pass.colorAttachmentCount != 1) {
+    return false;
+  }
+"""
+new = """bool encode_pass_resources(const wgpu::RenderPassEncoder& encoder, RenderPass& pass, std::string_view label) {
+  pass.directLabel = label;
+  if (!sEnabled || pass.msaaSamples != 1 || pass.colorAttachmentCount != 1) {
+    return false;
+  }
+  const bool r36sShadowDawnPass =
+      pass.resolveTarget &&
+      (pass.resolveFormat == GX_CTF_B8 || pass.resolveFormat == GX_CTF_R4 || pass.resolveFormat == GX_TF_Z8) &&
+      pass.resolveRect.x == 0 && pass.resolveRect.y == 0 &&
+      pass.resolveRect.width > 0 && pass.resolveRect.height > 0 &&
+      pass.resolveRect.width == pass.resolveRect.height &&
+      pass.resolveRect.width <= 512;
+  if (r36sShadowDawnPass) {
+    // Do not record only the minimal Direct-GLES resource references. Returning false makes encoding.cpp
+    // record the complete render pass through Dawn, which is required because prepare_frame will deliberately
+    // make this pass ineligible for Direct-GLES replay.
+    return false;
+  }
+"""
+if old not in s:
+    raise SystemExit("shadow Dawn fallback: encode_pass_resources anchor missing")
+s = s.replace(old, new, 1)
+
 old = """    PassPlan plan{
         .label = pass.directLabel,
         .width = pass.colorAttachments[0].size.width,
@@ -57,4 +86,4 @@ if old not in s:
 s = s.replace(old, new, 1)
 
 p.write_text(s)
-print("forced square B8/R4/Z8 shadow-source passes up to 512x512 through Dawn")
+print("forced square B8/R4/Z8 shadow-source passes up to 512x512 through fully recorded Dawn path")
