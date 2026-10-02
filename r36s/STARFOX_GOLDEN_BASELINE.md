@@ -1091,3 +1091,38 @@ New policy:
 - no reflection-specific uniform routing remains necessary
 
 This is intended as the robust R36S/Mali-G31 compatibility mode: safe uniforms, fast geometry streams.
+
+
+### 2026-10-02 Global uniform-safe build — water/models correct, moving shadows unstable
+
+Build `a7dbb6023bd5eef9688f8e0efc9a6d726c03c0e7` was tested on R36S.
+
+Hardware result:
+- water/reflection remains correct
+- Fox, dinosaur and backpack/model materials remain correct
+- remaining visible issue: shadows from Fox, dinosaurs, plants and other casters glitch while the scene/caster moves
+- when movement stops, the shadows settle and become correct again
+
+Log result:
+- Dawn uniform uploads are active while mapped vertex+index stay enabled
+- no Direct-GLES GL errors are emitted
+- the uniform-safe path therefore solved the previous model/material corruption without solving the moving shadow geometry
+
+Source correlation:
+- `renderObjectShadowTexture` renders caster geometry then resolves a 128x128 B8 shadow texture
+- projected/model shadow paths also resolve square R4 or Z8 shadow textures
+- these shadow textures are updated from dynamically changing caster geometry while objects move
+
+### Targeted shadow vertex-safe test
+
+New policy:
+- retain Dawn uniforms globally
+- retain mapped index data globally
+- retain mapped vertex data for ordinary world/model rendering
+- detect square <=256 source passes resolving B8, R4 or Z8 shadow textures
+- mirror only the streamed vertex ranges referenced by those passes into Dawn's normal vertex buffer
+- bind Dawn vertex data only while replaying those shadow-source passes
+
+Interpretation:
+- moving shadows correct: mapped vertex visibility is the remaining shadow-specific fault; keep this targeted fix
+- shadows still glitch: test mapped index specifically for shadow-source passes next
