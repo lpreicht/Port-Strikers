@@ -940,3 +940,36 @@ Interpretation:
 - water correct: Mali-G31 mapped-stream coherency/visibility under the heavy reflection pass is the source corruption
 - water still flickers: mapped streams are excluded; the remaining mismatch is Direct-GLES fixed-function/dynamic
   state or command semantics rather than frame-buffer transport
+
+
+### 2026-10-02 Dawn-backed reflection streams hardware result — WATER CORRECT
+
+Build `9ae01bd80fde50d495e54fbce3c975d3e6afbeed` was tested on R36S.
+
+Hardware result:
+- water/reflection is rendered correctly for the first time on the fast Direct-GLES reflection path
+- runtime confirms the relevant 427x320 reflection-source pass stayed Direct-GLES while binding Dawn-backed
+  vertex/index/uniform streams
+- normal mapped GL streams remain enabled for the renderer outside that localized pass
+- correctness therefore depends on how the reflection pass consumes per-frame stream data, not on EFB resolve,
+  water TEV, sampler state, clear behavior, vertex API, indexed-draw API, barriers or Direct-GLES fixed-function state
+
+Performance caveat:
+- uploading and binding all three Dawn-backed streams makes the reflection-heavy scene substantially slower,
+  often around 140-197 ms render time per retrace
+
+### Next isolation: Dawn index buffer only
+
+The reflection path is unusually index-heavy (8 MiB planar-reflection index stream) and earlier stale-draw diagnostics
+make the mapped index stream the strongest individual candidate.
+
+Test:
+- reflection source remains Direct-GLES
+- reflection source binds Dawn's index buffer only
+- vertex and uniform data return to the normal persistently mapped GL buffers
+- only the index stream is uploaded to Dawn solely because the reflection pass needs it
+- all other passes retain the normal mapped-stream path
+
+Interpretation:
+- water correct: mapped index-stream visibility/coherency is the root cause; retain a targeted index-only fix and optimize its upload range
+- water flickers again: index alone is insufficient; next test Dawn vertex only, then Dawn uniform only
