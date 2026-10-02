@@ -1028,3 +1028,35 @@ Test:
 Interpretation:
 - water correct: mapped uniform visibility/coherency is the root cause; final fix can keep mapped vertex+index and upload only uniform data
 - water flickers: mapped uniform alone is insufficient; next test Dawn vertex only
+
+
+### 2026-10-02 Dawn uniform-only reflection result — WATER CORRECT / ROOT CAUSE LOCALISED
+
+Build `0ce268b2696c5babb6c34398c8d6e9b021deb589` was tested on R36S.
+
+Hardware result:
+- water/reflection is correct
+- the 427x320 reflection-source pass remains Direct-GLES
+- only Dawn's uniform buffer is used for that pass
+- vertex and index streams remain in persistently mapped GL storage
+
+Conclusion:
+- mapped vertex and mapped index streams are not required for the fix
+- the corruption is caused by the persistently mapped uniform stream as observed by this heavy reflection pass
+- EFB copy, water TEV, RGB565 conversion, alpha semantics, synchronization, clear state, sampler state,
+  vertex binding API and index draw API were already excluded independently
+
+### Permanent optimization: mirror only reflection uniform windows
+
+The diagnostic uniform-only build still uploaded the entire frame uniform stream into Dawn. Because GX batching stores
+the uniform-record index in decoded vertices, a merged draw can reference multiple 4 KiB records, but all records in a
+merged draw are guaranteed to share the same uniform window.
+
+Permanent fix:
+- collect the distinct uniform-window indices referenced by the large RGB565 reflection source pass
+- keep mapped vertex and index streams unchanged
+- mirror only those complete 16 KiB windows at their original offsets into Dawn's normal uniform buffer
+- bind that Dawn uniform buffer only during the reflection source pass
+- if another true Dawn consumer exists in a frame, preserve the normal full-stream upload path
+
+This retains the known-correct uniform semantics while reducing the extra upload to the smallest safe batching granularity.
