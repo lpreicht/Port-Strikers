@@ -1126,3 +1126,31 @@ New policy:
 Interpretation:
 - moving shadows correct: mapped vertex visibility is the remaining shadow-specific fault; keep this targeted fix
 - shadows still glitch: test mapped index specifically for shadow-source passes next
+
+
+### 2026-10-02 Targeted shadow vertex-safe result — SHADOW FLICKER UNCHANGED
+
+Build `c5ded9a3c02616c28358b114b370e26975dbb886` was tested on R36S.
+
+Hardware result:
+- water/reflection remains correct
+- ordinary Fox/Dino/backpack materials remain correct
+- moving model/plant shadows still flicker and settle when movement stops
+
+Runtime evidence:
+- targeted shadow vertex mirroring is definitely active
+- the log reports `[r36s-shadow-vertex-safe]` with only about 97 KiB of streamed vertex data mirrored
+- `[r36s-shadow-pass]` confirms the safe Dawn vertex source is selected for the matching shadow-source passes
+- therefore mapped streamed vertices alone are not the remaining shadow fault
+
+### Next isolation: safe shadow vertex + index
+
+New test:
+- keep the globally safe Dawn uniform policy
+- keep ordinary world/model geometry on mapped vertex+index
+- for the same B8/R4/Z8 square shadow-source passes, mirror only their used streamed vertex and index ranges
+- bind Dawn vertex and Dawn index buffers only while replaying those shadow-source passes
+
+Interpretation:
+- shadows stable: the remaining fault is mapped index visibility/coherency in dynamic shadow rendering
+- shadows still flicker: all three draw streams are then safe in the shadow source; investigate the shadow copy/update path rather than mapped streams
