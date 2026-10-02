@@ -135,7 +135,7 @@ export AURORA_GLES_DRIVER_PROBE=0
 # Aurora ARM's newer adaptive probe can still re-run on heavier scenes even
 # when the startup probe count is zero. An explicit barrier override disables
 # auto-probing completely while keeping barriers off, matching the V053 intent.
-export AURORA_GLES_DRAW_BARRIER=0
+export AURORA_GLES_DRAW_BARRIER=pass
 
 if [ "${FOXHOLLOW_PERFORMANCE:-1}" = 1 ]; then
   if [ -r "$cpu_governor_path" ]; then

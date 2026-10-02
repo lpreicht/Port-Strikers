@@ -1186,3 +1186,29 @@ Test:
 Interpretation:
 - shadows stable: remaining issue is inside Direct-GLES execution of dynamic shadow-source passes
 - shadows still flicker: source rendering is no longer the cause; investigate GXCopyTex / texture publication / shadow target reuse directly
+
+
+### 2026-10-02 Full Dawn shadow-source result — SHADOW FLICKER UNCHANGED
+
+Build `10989ab8f0425ae27304b71143dca39aa614a7e1` was tested on R36S.
+
+Hardware result:
+- level loads and runs
+- water/reflection remains correct
+- model/material corruption remains fixed
+- moving shadows still flicker and settle when movement stops
+
+Runtime evidence:
+- the shadow-source passes are genuinely forced through the fully recorded Dawn path
+- log markers include `[r36s-shadow-dawn-pass]` for 128x128 and 171x171 shadow resolves
+- therefore Direct-GLES execution of the shadow-source geometry is not the remaining cause
+
+Next isolation:
+- keep the full Dawn shadow-source fallback active
+- set `AURORA_GLES_DRAW_BARRIER=pass`
+- this issues `glMemoryBarrier(GL_TEXTURE_FETCH_BARRIER_BIT)` around every Direct-GLES pass
+- purpose: verify publication/visibility of freshly converted R4/B8/Z8 GXCopyTex textures before later Direct-GLES sampling
+
+Interpretation:
+- moving shadows stable: stale texture visibility between Dawn TexCopyConv and Direct-GLES consumer is the fault
+- moving shadows still flicker: investigate texture target reuse / resolve destination ownership / copy transform and shadow texture lifecycle
