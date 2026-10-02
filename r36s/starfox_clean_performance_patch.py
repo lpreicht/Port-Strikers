@@ -303,26 +303,17 @@ elif normal not in s:
 anchor = normal
 narrow = normal + """
 bool wait_pipeline(PipelineRef ref, wgpu::RenderPipeline& pipeline, uint32_t timeoutMs) {
-  std::unique_lock lock{g_pipelineMutex};
-  auto it = g_pipelines.find(ref);
-  if (it != g_pipelines.end()) {
-    pipeline = it->second.pipeline;
-    return true;
+  // Match the proven V052/V053 helper exactly in behaviour: Direct-GLES does
+  // not depend on one condition-variable wakeup. It rechecks get_pipeline()
+  // every millisecond for up to 5000 ms. The old helper did this for every
+  // get_pipeline() call originating from the Direct-GLES code range.
+  for (uint32_t i = 0; i < timeoutMs; ++i) {
+    if (get_pipeline(ref, pipeline)) {
+      return true;
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(1));
   }
-  if (!g_hasPipelineThread || !g_pendingPipelines.contains(ref)) {
-    return false;
-  }
-
-  const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(timeoutMs);
-  g_pipelineReadyCv.wait_until(lock, deadline, [=] {
-    return g_pipelines.contains(ref) || g_pipelineThreadEnd.load(std::memory_order_relaxed);
-  });
-  it = g_pipelines.find(ref);
-  if (it == g_pipelines.end()) {
-    return false;
-  }
-  pipeline = it->second.pipeline;
-  return true;
+  return get_pipeline(ref, pipeline);
 }
 """
 if anchor not in s:
@@ -341,26 +332,40 @@ new = """  PreparedPipeline p;
   if (!gx::find_pipeline_config(ref, p.config)) {
     return nullptr;
   }
-  if (!get_pipeline(ref, p.owner)) {
-    static bool loggedRecovered = false;
+  if (!wait_pipeline(ref, p.owner, 5000)) {
     static bool loggedTimeout = false;
-    if (!wait_pipeline(ref, p.owner, 5000)) {
-      if (!loggedTimeout) {
-        Log.warn("R36S Direct-GLES pipeline correctness wait timed out; falling back to skip");
-        loggedTimeout = true;
-      }
-      return nullptr;
+    if (!loggedTimeout) {
+      Log.warn("R36S Direct-GLES pipeline correctness wait timed out; falling back to skip");
+      loggedTimeout = true;
     }
-    if (!loggedRecovered) {
-      Log.info("R36S Direct-GLES async pipeline miss recovered; draw preserved");
-      loggedRecovered = true;
-    }
+    return nullptr;
   }
 """
 if old not in s:
     raise SystemExit("pipeline wait: direct prepare_pipeline anchor not found")
-gles.write_text(s.replace(old, new, 1))
-print("patched narrow V053-style Direct-GLES pipeline correctness wait")
+if old not in s:
+    raise SystemExit("pipeline wait: direct prepare_pipeline anchor not found")
+s = s.replace(old, new, 1)
+
+# The original V053 binary helper intercepted every get_pipeline() call whose
+# return address was inside the Direct-GLES code range. Aurora currently has a
+# second lookup while deciding whether a pass can use the direct path. Waiting
+# only in prepare_pipeline() was therefore not V053-equivalent and allowed the
+# planning path to observe transient pipeline misses.
+plan_old = """      if (!get_pipeline(d.pipeline, p) || !gx::find_pipeline_config(d.pipeline, c) || !pipeline_eligible(c)) {
+        return false;
+      }
+"""
+plan_new = """      if (!wait_pipeline(d.pipeline, p, 5000) || !gx::find_pipeline_config(d.pipeline, c) || !pipeline_eligible(c)) {
+        return false;
+      }
+"""
+if plan_old not in s:
+    raise SystemExit("pipeline wait: Direct-GLES planning lookup anchor not found")
+s = s.replace(plan_old, plan_new, 1)
+
+gles.write_text(s)
+print("patched exact V053-style Direct-GLES pipeline polling at all current lookup sites")
 
 print("Star Fox clean R36S performance patches applied successfully")
 
