@@ -36,7 +36,8 @@ if old not in s:
 s = s.replace(old, new, 1)
 
 old = """    if (stats_enabled() && sFrameNumber % 120 == 0) {
-      std::fprintf(stderr, "[gles-direct-plan] frame=%llu pass=%u eligible=%u gx=%u clear=%u other=%u custom=%u commands=%zu\\n",
+      std::fprintf(stderr,
+                   "[gles-direct-plan] frame=%llu pass=%zu eligible=%u gx=%u clear=%u other=%u custom=%u commands=%zu\\n",
 """
 new = """    if (r36sShadowDawnPass) {
       static unsigned shadowReports = 0;
@@ -48,7 +49,8 @@ new = """    if (r36sShadowDawnPass) {
       }
     }
     if (stats_enabled() && sFrameNumber % 120 == 0) {
-      std::fprintf(stderr, "[gles-direct-plan] frame=%llu pass=%u eligible=%u gx=%u clear=%u other=%u custom=%u commands=%zu\\n",
+      std::fprintf(stderr,
+                   "[gles-direct-plan] frame=%llu pass=%zu eligible=%u gx=%u clear=%u other=%u custom=%u commands=%zu\\n",
 """
 if old not in s:
     raise SystemExit("shadow Dawn fallback: plan log anchor missing")
