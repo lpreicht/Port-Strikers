@@ -591,3 +591,36 @@ Interpretation:
 - overlay remains stable while water flickers: the copy itself is stable and the bug is in water/projective/indirect
   reflection sampling
 This is diagnostic only; it does not change reflection format, scale, timing, TEV math, or copy allocation.
+
+
+### 2026-10-02 direct live-RGB565 overlay hardware result
+
+Build `220e659862b7417815d28669f4a90960d20edd16` was tested on R36S.
+
+Hardware result:
+- the direct reflection overlay flickers in exactly the same colors as the water
+
+This is the strongest localization so far. The overlay samples `gNewShadowReflectionTexture` through the ordinary
+HUD texture path and bypasses water projection, water indirect TEV, the water blend state, and water geometry.
+Therefore the visible color instability already exists in the live RGB565 reflection texture/content itself.
+
+The log confirms the intended build and diagnostic were active. In map 7, the same heavy reflection/water state
+still reaches roughly 5.75-7.22 retraces/s with about 101-135 ms render time. TexCopyConv remains around 1.8 ms,
+so conversion cost itself is not the dominant performance problem.
+
+### Next isolated diagnostic: same EFB moment, RGB565 vs true RGBA8
+
+Create one additional 320x240 RGBA8 diagnostic texture and capture it immediately after the normal RGB565
+reflection copy and before Z8. Show both through the same simple HUD path:
+- left: normal RGB565 reflection used by the game
+- right: independent true-RGBA8 copy from the exact same EFB moment
+
+Aurora normally maps no-alpha RGB EFB resolves to an RGB565 render target even for RGBA8 copy requests. For this
+single exact 640x480 -> 320x240 RGBA8 diagnostic copy, force a genuine RGBA8 GPU target so the comparison is
+independent.
+
+Interpretation:
+- both windows flicker identically: the instability is already in the EFB source/pass content or capture timing;
+  RGB565 conversion is innocent
+- only RGB565 flickers while RGBA8 is stable: the RGB565 copy/conversion path is the remaining correctness bug
+- both stable while water flickers would contradict the previous direct-overlay result and require checking draw order
