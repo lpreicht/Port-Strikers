@@ -1154,3 +1154,35 @@ New test:
 Interpretation:
 - shadows stable: the remaining fault is mapped index visibility/coherency in dynamic shadow rendering
 - shadows still flicker: all three draw streams are then safe in the shadow source; investigate the shadow copy/update path rather than mapped streams
+
+
+### 2026-10-02 Shadow vertex+index-safe result — FLICKER UNCHANGED
+
+Build `59c2f5c61de85f60b347724c1b9e99f817221192` was tested on R36S.
+
+Hardware result:
+- water/reflection remains correct
+- model/material corruption remains fixed
+- moving shadows still flicker and settle when movement stops
+
+Runtime evidence:
+- targeted shadow-stream mirroring is active
+- log shows both streamed vertex and index ranges mirrored for matching shadow passes
+- therefore mapped uniform, vertex and index streams are not sufficient to explain the remaining shadow flicker
+
+Important coverage correction:
+- `renderShadows` can use `screenW = 512` for the first/highest-resolution dynamic shadow source
+- the previous targeted classifier only covered square resolve sources up to 256
+- that means the highest-resolution moving shadow pass was not guaranteed to use the safe-stream path
+
+### Next isolation: full Dawn shadow-source passes up to 512
+
+Test:
+- retain the global safe-uniform policy for normal Direct-GLES rendering
+- force every square B8/R4/Z8 source pass up to 512x512 out of Direct-GLES and through Dawn completely
+- remove the targeted shadow-stream patch from the active workflow for this test
+- leave reflection and ordinary scene passes unchanged
+
+Interpretation:
+- shadows stable: remaining issue is inside Direct-GLES execution of dynamic shadow-source passes
+- shadows still flicker: source rendering is no longer the cause; investigate GXCopyTex / texture publication / shadow target reuse directly
