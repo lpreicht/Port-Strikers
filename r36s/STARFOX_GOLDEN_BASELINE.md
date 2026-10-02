@@ -804,3 +804,36 @@ Test only the reflection-source pass:
 Interpretation:
 - water correct: the Direct-GLES triangle-clear path is corrupting/staling the reflection source on Mali-G31
 - water still flickers: clear implementation is excluded and the next split should target Direct-GLES draw/resource semantics
+
+
+### 2026-10-02 reflection-source real glClear hardware result — no effect
+
+Build `b40c86f871372c8ded0d2106d338df49e2548aae` was tested on R36S.
+
+Hardware result:
+- water still flickers
+- the runtime confirms real `glClear()` executes for the large RGB565 reflection-source pass
+- the runtime also confirms the prior viewport/depth-range/scissor restoration executes
+- on map 7 the large Direct-GLES source pass remains very busy (333 GX draws + one clear in the sampled frame)
+
+Conclusion:
+- the Direct-GLES GX clear implementation is not the root cause
+- clear-state restoration is also not the root cause
+- remove both diagnostics from the active reflection test path
+
+### Next isolated diagnostic: Dawn-style GL sampler objects inside reflection source pass
+
+Aurora Direct-GLES normally copies sampler state onto the texture object. The source explicitly provides the
+alternative `AURORA_GLES_TEXTURE_SAMPLERS=0` behavior because some drivers can apply texture parameters lazily.
+
+Test:
+- return clear handling to the normal Direct-GLES path
+- remove the clear-state diagnostic
+- keep the reflection source pass on Direct-GLES
+- only while that pass is replayed, bind Dawn's real GL sampler objects instead of carrying sampler state on textures
+- all other Direct-GLES passes retain the current fast texture-object sampler path
+- no live reflection overlay
+
+Interpretation:
+- water correct: stale/lazy texture-object sampler state on Mali-G31 is corrupting the reflection source render
+- water still flickers: sampler binding is excluded; next isolate vertex binding API, then indexed draw API
