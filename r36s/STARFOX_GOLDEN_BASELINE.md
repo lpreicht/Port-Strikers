@@ -664,3 +664,42 @@ Interpretation:
 - reflection overlay becomes stable: Direct-GLES rendering/interop of the source EFB pass is the root correctness bug
 - unchanged flicker: the problem is above Direct-GLES, likely pass/source selection or GXCopyTex continuation semantics
 This test may be slower; correctness is the only goal.
+
+
+### 2026-10-02 Dawn-only reflection source pass hardware result — correctness confirmed
+
+Build `dcdfa71a3819020167321980153051f5ae79d7a8` was tested on R36S.
+
+Hardware result:
+- water is rendered correctly
+- the live reflection overlay is also correct
+- the previously wrong staff-end effect is not visible
+- performance is noticeably worse
+
+This is the first fully correct live-reflection result and localizes the bug to the Direct-GLES rendering/interop of
+the large EFB pass that immediately feeds the RGB565 reflection copy.
+
+The runtime log confirms the exact diagnostic was active. The source pass is forced through Dawn at scaled sizes
+such as 427x320 in map 7. The pass becomes Direct-GLES-ineligible and can contain well over 100-200 GX draws.
+Render time can climb to roughly 175-215 ms in heavy map 7 windows, so the slowdown is primarily the full Dawn
+fallback, not the small diagnostic overlay.
+
+### Next isolated test: publish Direct-GLES framebuffer writes before Dawn reflection resolve
+
+Restore the large reflection-source pass to Direct-GLES for performance. Mark only full-size large RGB565 resolves
+in the Direct-GLES pass plan. At the end of that pass, before Dawn executes the resolve, issue:
+
+`glMemoryBarrier(GL_FRAMEBUFFER_BARRIER_BIT | GL_TEXTURE_UPDATE_BARRIER_BIT | GL_TEXTURE_FETCH_BARRIER_BIT)`
+
+Keep one small live reflection overlay for verification.
+
+This specifically tests the newly localized direction of the interop problem:
+Direct-GLES framebuffer writes -> subsequent Dawn GXCopyTex read.
+
+This is distinct from the earlier failed handoff test, which synchronized after the reflection resolve before the
+next Direct-GLES sampling pass.
+
+Interpretation:
+- correct reflection with much better performance: keep the targeted publish barrier and remove the overlay
+- flicker returns: the visibility operation is stronger than a memory barrier; next test targeted glFinish at the
+  same pre-resolve boundary, not a broad/global finish
