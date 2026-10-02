@@ -624,3 +624,43 @@ Interpretation:
   RGB565 conversion is innocent
 - only RGB565 flickers while RGBA8 is stable: the RGB565 copy/conversion path is the remaining correctness bug
 - both stable while water flickers would contradict the previous direct-overlay result and require checking draw order
+
+
+### 2026-10-02 RGB565 vs true-RGBA8 side-by-side hardware result
+
+Build `b6c73fb5cf2ee060226a65d6ed215c631b3f22f0` was tested on R36S.
+
+Hardware result:
+- left normal RGB565 reflection and right independent true-RGBA8 reflection flicker identically
+- both show the same changing colors
+
+The log confirms the exact comparison build was active. Map 7 still enters the heavy state around 5.96-7.56
+retraces/s with roughly 95-130 ms render time; the extra diagnostic copy increases pass count but does not change
+the nature of the flicker.
+
+Conclusion:
+- RGB565 format/quantization/conversion is not the cause
+- the wrong/changing image already exists in the EFB source selected for the live reflection resolve
+- water/projective TEV is not the source of the color instability because the direct HUD overlays reproduce it
+- remove the extra RGBA8 copy from active builds
+
+The second `updateReflectionTextures()` in `sceneDraw()` is guarded by `bEnableDistortionFilter`. In the
+current source that filter is activated by the Andross distortion effect, so it is not a strong explanation for
+the normal Map 7 water case.
+
+### Next isolated diagnostic: render only the reflection-source EFB pass through Dawn
+
+Direct-GLES intercepts eligible Aurora render passes in Dawn's GL interop callback. The large reflection copy then
+resolves that pass into RGB565. Test whether the source corruption is introduced by Direct-GLES itself:
+
+- restore the normal single RGB565/Z8 reflection path
+- retain one small direct RGB565 overlay for observation
+- identify a pass with a full-target, large RGB565 resolve (the Star Fox 640x480 reflection source)
+- in `encode_pass_resources()`, return false so Dawn records all GX draws normally for that pass
+- in `prepare_frame()`, mark the same pass ineligible so the GL interop callback cannot intercept it at execution
+- leave every other pass on Direct-GLES
+
+Interpretation:
+- reflection overlay becomes stable: Direct-GLES rendering/interop of the source EFB pass is the root correctness bug
+- unchanged flicker: the problem is above Direct-GLES, likely pass/source selection or GXCopyTex continuation semantics
+This test may be slower; correctness is the only goal.
