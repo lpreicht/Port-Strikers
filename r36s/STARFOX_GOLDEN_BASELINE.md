@@ -837,3 +837,38 @@ Test:
 Interpretation:
 - water correct: stale/lazy texture-object sampler state on Mali-G31 is corrupting the reflection source render
 - water still flickers: sampler binding is excluded; next isolate vertex binding API, then indexed draw API
+
+
+### 2026-10-02 reflection-source Dawn sampler-object hardware result — no effect
+
+Build `8da369debbc6d4bd45955562bf80e93552d4a336` was tested on R36S.
+
+Hardware result:
+- water still flickers
+- runtime confirms Dawn GL sampler objects are active in the reflection-source diagnostic
+- sampler-bind call counts rise substantially, proving the alternate resource-binding path is exercised
+- map 7 remains reflection-heavy, with roughly 314 GX draws in the sampled large source pass
+
+Conclusion:
+- texture-object sampler-state laziness / sampler binding is not the root cause
+- remove the sampler-object diagnostic from the active test path
+
+### Next isolated diagnostic: Dawn-style vertex pointer API in reflection source pass
+
+Aurora Direct-GLES normally uses the ES 3.1 vertex binding API:
+- `glBindVertexBuffer`
+- `glVertexAttribFormat` / `glVertexAttribIFormat`
+- `glVertexAttribBinding`
+
+Aurora already provides `AURORA_GLES_VERTEX_API=pointer` as a diagnostic because some drivers can mishandle
+binding offsets. Dawn's GL backend-style path instead uses:
+- `glVertexAttribPointer` / `glVertexAttribIPointer`
+- `glVertexAttribDivisor`
+
+Test only the large RGB565 reflection-source pass with the pointer API. Invalidate the cached VAO binding state
+on entry/exit so surrounding normal Direct-GLES passes are rebuilt correctly. No sampler, clear, barrier or overlay
+diagnostic remains active.
+
+Interpretation:
+- water correct: Mali-G31 vertex binding offsets/state in the fast ES 3.1 path are corrupting the reflection source
+- water still flickers: vertex binding is excluded; next isolate indexed draw API
