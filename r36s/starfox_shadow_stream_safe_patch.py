@@ -180,14 +180,14 @@ if old not in s:
 s = s.replace(old, new, 1)
 
 old = """  glBindVertexArray(sVao);
-  sPassEbo = (sMapped != nullptr && !sR36SShadowPassActive)
-                 ? sMapped->indices
-                 : dawn::native::opengl::GetGLInteropBuffer(resources().indexBuffer.Get());
+  sPassEbo = sMapped != nullptr ? sMapped->indices : dawn::native::opengl::GetGLInteropBuffer(resources().indexBuffer.Get());
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, sPassEbo);
 """
 new = """  glBindVertexArray(sVao);
   sR36SShadowPassActive = plan.r36sShadowStreamSafe;
-  sPassEbo = sMapped != nullptr ? sMapped->indices : dawn::native::opengl::GetGLInteropBuffer(resources().indexBuffer.Get());
+  sPassEbo = (sMapped != nullptr && !sR36SShadowPassActive)
+                 ? sMapped->indices
+                 : dawn::native::opengl::GetGLInteropBuffer(resources().indexBuffer.Get());
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, sPassEbo);
 """
 if old not in s:
