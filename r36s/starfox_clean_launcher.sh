@@ -34,7 +34,18 @@ exec > >(tee "$LOGFILE") 2>&1
 
 enabled_cpu_paths=""
 cpu_governor_path=/sys/devices/system/cpu/cpufreq/policy0/scaling_governor
-gpu_governor_path=/sys/class/devfreq/fde60000.gpu/governor
+# RK3326's Mali-G31 GPU is normally exposed as ff400000.gpu. Other
+# ArkOS kernels may use another node; discover the available devfreq device.
+# The previous hardcoded fde60000.gpu belongs to a different Rockchip family.
+gpu_governor_path=""
+gpu_devfreq_dir=""
+for gpu_dir in /sys/class/devfreq/ff400000.gpu /sys/class/devfreq/*.gpu; do
+  if [ -r "$gpu_dir/governor" ]; then
+    gpu_governor_path="$gpu_dir/governor"
+    gpu_devfreq_dir="$gpu_dir"
+    break
+  fi
+done
 dmc_governor_path=/sys/class/devfreq/dmc/governor
 cpu_governor_previous=""
 gpu_governor_previous=""
@@ -173,7 +184,13 @@ echo "AURORA_GLES_DRAW_BARRIER=$AURORA_GLES_DRAW_BARRIER"
 echo "R36S_WATER_LITE=$R36S_WATER_LITE"
 echo "R36S_MENU_VIDEO_STRIDE=$R36S_MENU_VIDEO_STRIDE"
 echo "CPU_GOVERNOR=$(cat "$cpu_governor_path" 2>/dev/null || echo unavailable)"
+echo "GPU_DEVFREQ_PATH=${gpu_devfreq_dir:-unavailable}"
 echo "GPU_GOVERNOR=$(cat "$gpu_governor_path" 2>/dev/null || echo unavailable)"
+if [ -n "$gpu_devfreq_dir" ]; then
+  echo "GPU_FREQ_CURRENT=$(cat "$gpu_devfreq_dir/cur_freq" 2>/dev/null || echo unavailable)"
+  echo "GPU_FREQ_AVAILABLE=$(cat "$gpu_devfreq_dir/available_frequencies" 2>/dev/null || echo unavailable)"
+  echo "GPU_GOVERNORS_AVAILABLE=$(cat "$gpu_devfreq_dir/available_governors" 2>/dev/null || echo unavailable)"
+fi
 
 # Native SDL handles the actual game controls. GPTOKEYB is only used for the
 # PortMaster-standard device exit hotkey (Select+Start on the R36S).
