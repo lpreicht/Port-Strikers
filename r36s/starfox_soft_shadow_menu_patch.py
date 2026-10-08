@@ -20,7 +20,7 @@ s=conv.read_text()
 old="""// GX_CTF_R4: 4-bit red -> R8Unorm
 static constexpr std::string_view FragR4 = R"(
 @fragment fn fs_main(in: VertexOutput) -> @location(0) vec4f {
-    let r = quantize4(textureSample(src, src_samp, in.uv).r);
+    let r = quantize4(sample_efb(in.uv).r);
     return vec4f(r, r, r, r);
 }
 )"sv;"""
@@ -29,7 +29,7 @@ new="""// GX_CTF_R4 (R36S): retain source alpha precision for stable projected s
 // when the lower-resolution (scaled EFB) shadow mask is reprojected.
 static constexpr std::string_view FragR4 = R"(
 @fragment fn fs_main(in: VertexOutput) -> @location(0) vec4f {
-    let r = textureSample(src, src_samp, in.uv).r;
+    let r = sample_efb(in.uv).r;
     return vec4f(r, r, r, r);
 }
 )"sv;"""
