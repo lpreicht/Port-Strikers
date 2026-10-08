@@ -136,8 +136,8 @@ export AURORA_GLES_DRIVER_PROBE=0
 # when the startup probe count is zero. Explicit 0 disables both barriers
 # and probing, matching the validated V053 behavior. 'pass' is NOT off.
 export AURORA_GLES_DRAW_BARRIER=0
-# Keep base water polygons and reflection; skip optional water particle/overlay passes.
-export R36S_WATER_LITE="${R36S_WATER_LITE:-1}"
+# Previous water-FX lite optimization did not improve performance; restore all\n# cosmetic water rendering by default, retaining opt-in comparison mode.
+export R36S_WATER_LITE="${R36S_WATER_LITE:-0}"
 
 if [ "${FOXHOLLOW_PERFORMANCE:-1}" = 1 ]; then
   if [ -r "$cpu_governor_path" ]; then
