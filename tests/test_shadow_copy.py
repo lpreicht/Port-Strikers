@@ -28,7 +28,7 @@ setup_lines = [line for line in copy.splitlines() if
                'const auto rect = map_logical_scissor(' in line or
                'const auto sourceRect = map_logical_rect(' in line]
 assert len(setup_lines) == 2, f'expected two mapping statements, found {len(setup_lines)}'
-setup = '\\n'.join(setup_lines) + '\\n'
+setup = '\n'.join(setup_lines) + '\n'
 recording = (root / 'gfx/recording.cpp').read_text()
 uv = function(recording, 'std::array<float, 4> copy_uv_transform(')
 argument = re.search(r'prevPass.resolveUniformRange = push_uniform\(copy_uv_transform\(prevPass, (\w+)\)\)', recording)[1]
