@@ -173,6 +173,9 @@ jobs:
           grep -n 'R36S V048/V053 visual-safe: global doBlurFilter' game/src/main/lightmap.c
           grep -n 'bEnableSpiritVision != 0 && getCurSeqNo() == 0' game/src/main/lightmap.c
           python "$GITHUB_WORKSPACE/r36s/starfox_clean_performance_patch.py" "$PWD"
+          python "$GITHUB_WORKSPACE/r36s/starfox_soft_shadow_menu_patch.py" "$PWD"
+          grep -n "R36S): retain source alpha precision" extern/aurora/lib/gfx/tex_copy_conv.cpp
+          grep -n "skip = overdueFrames > 1" game/src/main/thp/dll_3e.c
           python "$GITHUB_WORKSPACE/r36s/v030_inline_render_worker_patch.py" "$PWD"
           grep -n -A10 'R36S V027 explicit SDL GLES context initialized' extern/aurora/lib/window.cpp || true
           grep -n -A10 'R36S V030 render worker disabled' extern/aurora/lib/gfx/render_worker.cpp || true
@@ -320,7 +323,7 @@ jobs:
           {
             echo "R36S patch commit: $GITHUB_SHA"
             echo "Port version: R36S-RC1 shadow-copy-bounds (hardware validation pending)"
-            echo "Shadow copy correction: 512-to-256 shadow source clamp, Foxhollow 1d3042e UV clipping fix"
+            echo "Shadow copy correction: 512-to-256 source clamp; R4 shadow mask keeps 8-bit source precision; Foxhollow UV clipping fix"
             echo "Foxhollow commit: 51c0deb7be83e8d5a9961f018dd34c8e0022e062 (v1.0.12)"
             echo "Build container: quay.io/pypa/manylinux_2_28_aarch64"
             echo "Target: R36S ArkOS AeUX / aarch64 / glibc 2.30"
@@ -332,7 +335,7 @@ jobs:
             echo "Uniform compatibility: Direct-GLES uses Dawn uniforms; R36S model shadow source 256px clipped-EFB fix; optional Dawn shadow fallback"
             echo "Stream uploads: mapped GL streams enabled (restored V053 setting)"
             echo "V053 visual safety: white missing-vertex-color fallback; global blur EFB-feedback bypass; Spirit Vision postprocess only outside scripted sequences"
-            echo "Timing/performance: V039/V053 cutscene-only timeDelta cap 6 -> 10; menu direct-RGBA THP; menu stale-frame catch-up; V053-style direct-draw pipeline correctness wait"
+            echo "Timing/performance: menu catch-up at most 1 stale THP frame; direct RGBA; cutscene delta recovery; draw-local pipeline wait"
             echo "SDL: shared SDL3-to-system-SDL2 PortMaster shim 6057d79b (ArkOS KMSDRM + native ALSA)"
             echo "Audio queue: 200 ms (restored V053 underrun guard)"
             echo "DVD loader: direct nod path open (RVZ diagnostics enabled)"
