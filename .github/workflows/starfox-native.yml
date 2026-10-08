@@ -143,6 +143,7 @@ jobs:
           python "$GITHUB_WORKSPACE/r36s/starfox_uniform_safe_stream_patch.py" "$PWD"
           python "$GITHUB_WORKSPACE/r36s/starfox_shadow_dawn_pass_patch.py" "$PWD"
           python "$GITHUB_WORKSPACE/r36s/starfox_shadow_copy_bounds_patch.py" "$PWD"
+          python "$GITHUB_WORKSPACE/r36s/starfox_shadow_copy_diagnostic_patch.py" "$PWD"
           python "$GITHUB_WORKSPACE/tests/test_shadow_copy.py" "$PWD"
           echo "=== Star Fox global uniform-safe + targeted shadow vertex-safe verification ==="
           grep -n 'r36s-uniform-safe' extern/aurora/lib/gfx/gles_direct.cpp
