@@ -146,8 +146,6 @@ jobs:
           python "$GITHUB_WORKSPACE/r36s/starfox_shadow_copy_diagnostic_patch.py" "$PWD"
           python "$GITHUB_WORKSPACE/r36s/starfox_shadow_source_bounds_fix.py" "$PWD"
           python "$GITHUB_WORKSPACE/r36s/starfox_native_shadow_texture_patch.py" "$PWD"
-          python "$GITHUB_WORKSPACE/r36s/starfox_shadow_snapshot_patch.py" "$PWD"
-          grep -n "R36S shadow snapshot" extern/aurora/lib/dolphin/gx/GXFrameBuffer.cpp
           grep -n "r36sNativeShadowMask" extern/aurora/lib/dolphin/gx/GXFrameBuffer.cpp
           python "$GITHUB_WORKSPACE/r36s/starfox_water_effects_lite_patch.py" "$PWD"
           python "$GITHUB_WORKSPACE/tests/test_r36s_shadow_and_water.py" "$PWD"
@@ -330,7 +328,7 @@ jobs:
           {
             echo "R36S patch commit: $GITHUB_SHA"
             echo "Port version: R36S-RC1 shadow-copy-bounds (hardware validation pending)"
-            echo "Shadow copy correction: native <=256px B8/R4/Z8 destinations; immutable per-update shadow snapshots; safe UV clipping"
+            echo "Shadow copy correction: native <=256px B8/R4/Z8 destinations; stable cached shadow-texture identity; safe UV clipping"
             echo "Foxhollow commit: 51c0deb7be83e8d5a9961f018dd34c8e0022e062 (v1.0.12)"
             echo "Build container: quay.io/pypa/manylinux_2_28_aarch64"
             echo "Target: R36S ArkOS AeUX / aarch64 / glibc 2.30"
