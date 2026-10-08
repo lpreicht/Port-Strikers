@@ -5,6 +5,7 @@ on:
     branches:
       - starfox-clean-r36s
       - starfox-performance-recovery
+      - starfox-finish
   workflow_dispatch:
 
 permissions:
@@ -141,6 +142,8 @@ jobs:
           python "$GITHUB_WORKSPACE/r36s/starfox_efb_alpha_patch.py" "$PWD"
           python "$GITHUB_WORKSPACE/r36s/starfox_uniform_safe_stream_patch.py" "$PWD"
           python "$GITHUB_WORKSPACE/r36s/starfox_shadow_dawn_pass_patch.py" "$PWD"
+          python "$GITHUB_WORKSPACE/r36s/starfox_shadow_copy_bounds_patch.py" "$PWD"
+          python "$GITHUB_WORKSPACE/tests/test_shadow_copy.py" "$PWD"
           echo "=== Star Fox global uniform-safe + targeted shadow vertex-safe verification ==="
           grep -n 'r36s-uniform-safe' extern/aurora/lib/gfx/gles_direct.cpp
           grep -n 'directUniformNeeded' extern/aurora/lib/gfx/gles_direct.cpp
@@ -310,7 +313,8 @@ jobs:
 
           {
             echo "R36S patch commit: $GITHUB_SHA"
-            echo "Port version: PERFORMANCE-RECOVERY (hardware validation pending)"
+            echo "Port version: R36S-RC1 shadow-copy-bounds (hardware validation pending)"
+            echo "Shadow copy correction: Foxhollow 1d3042e; preserve unclipped UV extent and pad out-of-EFB samples"
             echo "Foxhollow commit: 51c0deb7be83e8d5a9961f018dd34c8e0022e062 (v1.0.12)"
             echo "Build container: quay.io/pypa/manylinux_2_28_aarch64"
             echo "Target: R36S ArkOS AeUX / aarch64 / glibc 2.30"
