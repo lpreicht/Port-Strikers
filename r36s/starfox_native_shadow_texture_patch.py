@@ -15,7 +15,7 @@ p=root/"extern/aurora/lib/dolphin/gx/GXFrameBuffer.cpp"
 s=p.read_text()
 old="""  const auto [dstWidth, dstHeight] = scale_copy_dst(g_gxState.texCopyDstWidth, g_gxState.texCopyDstHeight);
   const auto texCopyFmt = g_gxState.texCopyFmt;"""
-new="""  const auto texCopyFmt = g_gxState.texCopyFmt;
+new=r"""  const auto texCopyFmt = g_gxState.texCopyFmt;
   // R36S native shadow mask: these copies feed projective shadow samplers
   // whose GXTexObj dimensions are not rescaled with the display EFB.
   const bool r36sNativeShadowMask =
