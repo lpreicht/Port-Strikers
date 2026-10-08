@@ -178,9 +178,6 @@ jobs:
           python "$GITHUB_WORKSPACE/r36s/starfox_nonblocking_pipeline_preflight_patch.py" "$PWD"
           python "$GITHUB_WORKSPACE/r36s/starfox_menu_video_cadence_patch.py" "$PWD"
           python "$GITHUB_WORKSPACE/r36s/starfox_menu_video_timing_patch.py" "$PWD"
-          python "$GITHUB_WORKSPACE/r36s/starfox_thp_audio_pump_fix.py" "$PWD"
-          grep -n "r36s-thp-audio-starve" game/src/main/thp/n_options.c
-          grep -n "r36s-thp-audio-drop" game/src/main/thp/dll_3b.c
           grep -n "r36s-menu-jpeg-cost" game/src/main/thp/dll_3e.c
           grep -n "r36sMenuVideoStride" game/src/main/thp/dll_3e.c
           grep -n "audio_kept=1" game/src/main/thp/dll_3e.c
@@ -195,6 +192,10 @@ jobs:
           python "$GITHUB_WORKSPACE/r36s/foxhollow_dvd_callback_pump_patch.py" "$PWD"
           python "$GITHUB_WORKSPACE/r36s/foxhollow_card_image_path_patch.py" "$PWD"
           python "$GITHUB_WORKSPACE/r36s/frame_profile_patch.py" "$PWD"
+          # Audio patch requires V025 VI phase instrumentation; apply strictly after it.
+          python "$GITHUB_WORKSPACE/r36s/starfox_thp_audio_pump_fix.py" "$PWD"
+          grep -n "r36s-thp-audio-starve" game/src/main/thp/n_options.c
+          grep -n "r36s-thp-audio-drop" game/src/main/thp/dll_3b.c
           python "$GITHUB_WORKSPACE/tests/test_present_contract.py" "$PWD/extern/aurora/lib/window.cpp"
           # R36S audio: V053 used 200 ms buffering and remained stable through heavy cutscenes.
           # Restore that proven queue together with the native-ALSA SDL3 shim path.
