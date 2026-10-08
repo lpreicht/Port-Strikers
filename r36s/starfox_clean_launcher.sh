@@ -149,9 +149,11 @@ export AURORA_GLES_DRIVER_PROBE=0
 export AURORA_GLES_DRAW_BARRIER=0
 # Previous water-FX lite optimization did not improve performance; restore all\n# cosmetic water rendering by default, retaining opt-in comparison mode.
 export R36S_WATER_LITE="${R36S_WATER_LITE:-0}"
-# Diagnostic movie cadence: preserves audio frames while lowering synchronous JPEG work.
-# 1=original, 2=half-rate (default), 0=still video / audio continues.
-export R36S_MENU_VIDEO_STRIDE="${R36S_MENU_VIDEO_STRIDE:-2}"
+# INTRO STANDBILD TEST: decode the first THP video frame, then freeze image
+# while the movie clock and THP audio decoding keep running.
+# Hard-override the mode so this diagnostic always runs even if old settings
+# remain in the environment. Restore the normal launcher after comparison.
+export R36S_MENU_VIDEO_STRIDE=0
 
 if [ "${FOXHOLLOW_PERFORMANCE:-1}" = 1 ]; then
   if [ -r "$cpu_governor_path" ]; then
