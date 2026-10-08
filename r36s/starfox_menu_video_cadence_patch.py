@@ -48,7 +48,7 @@ s=s.replace(anchor,added,1)
 start="""        if (player->compInfo.mFrameComp[i] == 0) {
             s32 decodeError;
             fhTHPVideoSetCompressedSize(componentSize);"""
-new_start="""        if (player->compInfo.mFrameComp[i] == 0) {
+new_start=r"""        if (player->compInfo.mFrameComp[i] == 0) {
             const int menuStride = fhIsMenuMap() ? r36sMenuVideoStride() : 1;
             const BOOL skipMenuVideo = player->curTextureSet != NULL &&
                 (menuStride == 0 || (menuStride > 1 && (sPcMovieFrame % (u32)menuStride) != 0));
