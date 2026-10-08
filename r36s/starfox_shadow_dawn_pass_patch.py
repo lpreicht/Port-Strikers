@@ -5,6 +5,9 @@ import sys
 root = Path(sys.argv[1] if len(sys.argv) > 1 else ".").resolve()
 p = root / "extern/aurora/lib/gfx/gles_direct.cpp"
 s = p.read_text()
+# Preserve current Dawn fallback by default; opt out for a controlled device A/B test.
+if '#include <cstdlib>' not in s:
+    s = '#include <cstdlib>\n' + s
 
 old = """bool encode_pass_resources(const wgpu::RenderPassEncoder& encoder, RenderPass& pass, std::string_view label) {
   pass.directLabel = label;
@@ -18,6 +21,8 @@ new = """bool encode_pass_resources(const wgpu::RenderPassEncoder& encoder, Rend
     return false;
   }
   const bool r36sShadowDawnPass =
+      (std::getenv("R36S_SHADOW_FORCE_DAWN") == nullptr ||
+       std::getenv("R36S_SHADOW_FORCE_DAWN")[0] != '0') &&
       pass.resolveTarget &&
       (pass.resolveFormat == GX_CTF_B8 || pass.resolveFormat == GX_CTF_R4 || pass.resolveFormat == GX_TF_Z8) &&
       pass.resolveRect.x == 0 && pass.resolveRect.y == 0 &&
@@ -45,6 +50,8 @@ old = """    PassPlan plan{
     };
 """
 new = """    const bool r36sShadowDawnPass =
+        (std::getenv("R36S_SHADOW_FORCE_DAWN") == nullptr ||
+         std::getenv("R36S_SHADOW_FORCE_DAWN")[0] != '0') &&
         pass.resolveTarget &&
         (pass.resolveFormat == GX_CTF_B8 || pass.resolveFormat == GX_CTF_R4 || pass.resolveFormat == GX_TF_Z8) &&
         pass.resolveRect.x == 0 && pass.resolveRect.y == 0 &&
