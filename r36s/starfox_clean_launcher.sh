@@ -138,6 +138,9 @@ export AURORA_GLES_DRIVER_PROBE=0
 export AURORA_GLES_DRAW_BARRIER=0
 # Previous water-FX lite optimization did not improve performance; restore all\n# cosmetic water rendering by default, retaining opt-in comparison mode.
 export R36S_WATER_LITE="${R36S_WATER_LITE:-0}"
+# Diagnostic movie cadence: preserves audio frames while lowering synchronous JPEG work.
+# 1=original, 2=half-rate (default), 0=still video / audio continues.
+export R36S_MENU_VIDEO_STRIDE="${R36S_MENU_VIDEO_STRIDE:-2}"
 
 if [ "${FOXHOLLOW_PERFORMANCE:-1}" = 1 ]; then
   if [ -r "$cpu_governor_path" ]; then
@@ -168,6 +171,7 @@ echo "FOXHOLLOW_PRESENT=$FOXHOLLOW_PRESENT"
 echo "AURORA_GLES_DRIVER_PROBE=$AURORA_GLES_DRIVER_PROBE"
 echo "AURORA_GLES_DRAW_BARRIER=$AURORA_GLES_DRAW_BARRIER"
 echo "R36S_WATER_LITE=$R36S_WATER_LITE"
+echo "R36S_MENU_VIDEO_STRIDE=$R36S_MENU_VIDEO_STRIDE"
 echo "CPU_GOVERNOR=$(cat "$cpu_governor_path" 2>/dev/null || echo unavailable)"
 echo "GPU_GOVERNOR=$(cat "$gpu_governor_path" 2>/dev/null || echo unavailable)"
 
