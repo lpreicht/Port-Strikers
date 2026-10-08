@@ -174,6 +174,9 @@ jobs:
           grep -n 'bEnableSpiritVision != 0 && getCurSeqNo() == 0' game/src/main/lightmap.c
           python "$GITHUB_WORKSPACE/r36s/starfox_clean_performance_patch.py" "$PWD"
           python "$GITHUB_WORKSPACE/r36s/starfox_soft_shadow_menu_patch.py" "$PWD"
+          python "$GITHUB_WORKSPACE/r36s/starfox_nonblocking_pipeline_preflight_patch.py" "$PWD"
+          grep -n "if (!get_pipeline(d.pipeline, p)" extern/aurora/lib/gfx/gles_direct.cpp
+          grep -n "if (!wait_pipeline(ref, p.owner, 5000))" extern/aurora/lib/gfx/gles_direct.cpp
           grep -n "R36S): retain source alpha precision" extern/aurora/lib/gfx/tex_copy_conv.cpp
           grep -n "skip = overdueFrames > 1" game/src/main/thp/dll_3e.c
           python "$GITHUB_WORKSPACE/r36s/v030_inline_render_worker_patch.py" "$PWD"
