@@ -18,7 +18,7 @@ p=root/"extern/aurora/lib/dolphin/gx/GXFrameBuffer.cpp"
 s=p.read_text()
 anchor="""  auto& handle = it->second;
 
-  if (g_gxState.alphaUpdate"""
+  // R36S/upstream 9c0bf66: GXCopyTex resolves the EFB without a pre-copy dst-alpha overwrite."""
 repl="""  // R36S GPU shadow snapshots: do not overwrite a texture still referenced
   // by earlier recorded draw commands or an in-flight frame. The cache owns
   // the latest generation, while the previous TextureHandles remain alive
@@ -33,7 +33,7 @@ repl="""  // R36S GPU shadow snapshots: do not overwrite a texture still referen
   }
   auto& handle = it->second;
 
-  if (g_gxState.alphaUpdate"""
+  // R36S/upstream 9c0bf66: GXCopyTex resolves the EFB without a pre-copy dst-alpha overwrite."""
 if s.count(anchor)!=1:
     raise SystemExit(f"snapshot placement anchor mismatch: {s.count(anchor)}")
 if "r36sNativeShadowMask" not in s:
