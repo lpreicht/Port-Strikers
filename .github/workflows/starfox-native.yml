@@ -144,6 +144,7 @@ jobs:
           python "$GITHUB_WORKSPACE/r36s/starfox_shadow_dawn_pass_patch.py" "$PWD"
           python "$GITHUB_WORKSPACE/r36s/starfox_shadow_copy_bounds_patch.py" "$PWD"
           python "$GITHUB_WORKSPACE/r36s/starfox_shadow_copy_diagnostic_patch.py" "$PWD"
+          python "$GITHUB_WORKSPACE/r36s/starfox_reflection_interval_patch.py" "$PWD"
           python "$GITHUB_WORKSPACE/tests/test_shadow_copy.py" "$PWD"
           echo "=== Star Fox global uniform-safe + targeted shadow vertex-safe verification ==="
           grep -n 'r36s-uniform-safe' extern/aurora/lib/gfx/gles_direct.cpp
@@ -184,7 +185,7 @@ jobs:
           grep -n 'AI_OUTPUT_QUEUE_MS' port/src/ai_shim.c
           # RK3326/Mali-G31 r13: force Dawn's OpenGLES backend.
           # The legacy Vulkan ICD crashes inside Dawn PhysicalDevice::InitializeImpl.
-          sed -i '/\.appName = "Foxhollow",/a\      .desiredBackend = BACKEND_OPENGLES,\n      .cpuVertexDecode = true,\n      .uniformTable = true,\n      .batchDraws = true,\n      .glesDirectSubmission = 1,\n      .glesMappedStreams = 1,\n      .renderStats = true,\n      .smallCopyPassInterval = 1,' src/main.c
+          sed -i '/\.appName = "Foxhollow",/a\      .desiredBackend = BACKEND_OPENGLES,\n      .cpuVertexDecode = true,\n      .uniformTable = true,\n      .batchDraws = true,\n      .glesDirectSubmission = 1,\n      .glesMappedStreams = 1,\n      .renderStats = true,\n      .smallCopyPassInterval = 2,' src/main.c
           grep -n -A12 'appName = "Foxhollow"' src/main.c
           git submodule update --init --recursive
           git rev-parse HEAD
@@ -313,7 +314,7 @@ jobs:
           done
 
           {
-            echo "R36S patch commit: $GITHUB_SHA"
+            echo "R36S patch commit: $GITHUB_SHA"\n            echo "Performance trial: 0.5 EFB scale; small 256px color reflection copies every 2 frames; B8 shadow maps every frame"
             echo "Port version: R36S-RC1 shadow-copy-bounds (hardware validation pending)"
             echo "Shadow copy correction: Foxhollow 1d3042e; preserve unclipped UV extent and pad out-of-EFB samples"
             echo "Foxhollow commit: 51c0deb7be83e8d5a9961f018dd34c8e0022e062 (v1.0.12)"
