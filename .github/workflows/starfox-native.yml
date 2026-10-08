@@ -177,6 +177,8 @@ jobs:
           python "$GITHUB_WORKSPACE/r36s/starfox_clean_performance_patch.py" "$PWD"
           python "$GITHUB_WORKSPACE/r36s/starfox_nonblocking_pipeline_preflight_patch.py" "$PWD"
           python "$GITHUB_WORKSPACE/r36s/starfox_menu_video_cadence_patch.py" "$PWD"
+          python "$GITHUB_WORKSPACE/r36s/starfox_menu_video_timing_patch.py" "$PWD"
+          grep -n "r36s-menu-jpeg-cost" game/src/main/thp/dll_3e.c
           grep -n "r36sMenuVideoStride" game/src/main/thp/dll_3e.c
           grep -n "audio_kept=1" game/src/main/thp/dll_3e.c
           grep -n "if (!get_pipeline(d.pipeline, p)" extern/aurora/lib/gfx/gles_direct.cpp
@@ -340,7 +342,7 @@ jobs:
             echo "Uniform compatibility: Direct-GLES uses Dawn uniforms; R36S model shadow source 256px clipped-EFB fix; optional Dawn shadow fallback"
             echo "Stream uploads: mapped GL streams enabled (restored V053 setting)"
             echo "V053 visual safety: white missing-vertex-color fallback; global blur EFB-feedback bypass; Spirit Vision postprocess only outside scripted sequences"
-            echo "Timing/performance: menu THP JPEG half-rate with full audio; no per-pass GPU barrier; nonblocking pipeline preflight"
+            echo "Timing/performance: menu THP half-rate with JPEG latency profiling; no per-pass GPU barrier; nonblocking pipeline preflight"
             echo "SDL: shared SDL3-to-system-SDL2 PortMaster shim 6057d79b (ArkOS KMSDRM + native ALSA)"
             echo "Audio queue: 200 ms (restored V053 underrun guard)"
             echo "DVD loader: direct nod path open (RVZ diagnostics enabled)"
