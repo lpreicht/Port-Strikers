@@ -1,0 +1,33 @@
+name: Wind Waker R36S ARM64 source probe
+on:
+  push:
+    branches:
+      - windwaker-r36s-prototype-20261009
+    paths:
+      - windwaker-r36s/**
+      - .github/workflows/windwaker-r36s-probe.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  compile-host:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential clang llvm lld cmake ninja-build git python3 pkg-config file \
+            libwayland-dev libxkbcommon-dev libx11-xcb-dev libx11-dev libxrandr-dev \
+            libxext-dev libxi-dev libxcursor-dev libgl1-mesa-dev libvulkan-dev \
+            libasound2-dev libpulse-dev libxss-dev libxtst-dev libdrm-dev libgbm-dev
+      - name: Build ARM64 host (no game code)
+        run: bash windwaker-r36s/build-host-probe.sh
+      - name: Upload host-only proof, if it compiled
+        uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: bluewake-arm64-linux-host-NOT-ARKOS
+          path: build/windwaker-r36s/artifacts/
+          if-no-files-found: error
