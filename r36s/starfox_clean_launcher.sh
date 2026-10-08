@@ -136,6 +136,8 @@ export AURORA_GLES_DRIVER_PROBE=0
 # when the startup probe count is zero. An explicit barrier override disables
 # auto-probing completely while keeping barriers off, matching the V053 intent.
 export AURORA_GLES_DRAW_BARRIER=pass
+# Keep base water polygons and reflection; skip optional water particle/overlay passes.
+export R36S_WATER_LITE="${R36S_WATER_LITE:-1}"
 
 if [ "${FOXHOLLOW_PERFORMANCE:-1}" = 1 ]; then
   if [ -r "$cpu_governor_path" ]; then
@@ -165,6 +167,7 @@ echo "FOXHOLLOW_LANGUAGE=$FOXHOLLOW_LANGUAGE"
 echo "FOXHOLLOW_PRESENT=$FOXHOLLOW_PRESENT"
 echo "AURORA_GLES_DRIVER_PROBE=$AURORA_GLES_DRIVER_PROBE"
 echo "AURORA_GLES_DRAW_BARRIER=$AURORA_GLES_DRAW_BARRIER"
+echo "R36S_WATER_LITE=$R36S_WATER_LITE"
 echo "CPU_GOVERNOR=$(cat "$cpu_governor_path" 2>/dev/null || echo unavailable)"
 echo "GPU_GOVERNOR=$(cat "$gpu_governor_path" 2>/dev/null || echo unavailable)"
 
