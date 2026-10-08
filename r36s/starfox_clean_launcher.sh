@@ -133,9 +133,9 @@ export FOXHOLLOW_CACHE_DIR="$CONFDIR/cache"
 export FOXHOLLOW_PRESENT=direct
 export AURORA_GLES_DRIVER_PROBE=0
 # Aurora ARM's newer adaptive probe can still re-run on heavier scenes even
-# when the startup probe count is zero. An explicit barrier override disables
-# auto-probing completely while keeping barriers off, matching the V053 intent.
-export AURORA_GLES_DRAW_BARRIER=pass
+# when the startup probe count is zero. Explicit 0 disables both barriers
+# and probing, matching the validated V053 behavior. 'pass' is NOT off.
+export AURORA_GLES_DRAW_BARRIER=0
 # Keep base water polygons and reflection; skip optional water particle/overlay passes.
 export R36S_WATER_LITE="${R36S_WATER_LITE:-1}"
 
