@@ -21,7 +21,14 @@ mapping = function(gx, 'gfx::ClipRect map_logical_scissor(')
 if 'gfx::ClipRect map_logical_rect(' in gx:
     mapping = function(gx, 'gfx::ClipRect map_logical_rect(') + '\n' + mapping
 copy = function((root / 'dolphin/gx/GXFrameBuffer.cpp').read_text(), 'void copy_tex(')
-setup = copy[copy.index('  const auto rect ='):copy.index('  const auto [dstWidth')]
+# Only extract the two coordinate mappings. The rest of copy_tex may also
+# contain shadow-destination allocation logic, which needs the real GXState
+# and must not be pulled into this isolated UV coordinate fixture.
+setup_lines = [line for line in copy.splitlines() if
+               'const auto rect = map_logical_scissor(' in line or
+               'const auto sourceRect = map_logical_rect(' in line]
+assert len(setup_lines) == 2, f'expected two mapping statements, found {len(setup_lines)}'
+setup = '\\n'.join(setup_lines) + '\\n'
 recording = (root / 'gfx/recording.cpp').read_text()
 uv = function(recording, 'std::array<float, 4> copy_uv_transform(')
 argument = re.search(r'prevPass.resolveUniformRange = push_uniform\(copy_uv_transform\(prevPass, (\w+)\)\)', recording)[1]
