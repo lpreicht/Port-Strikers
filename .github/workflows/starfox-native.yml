@@ -219,6 +219,9 @@ jobs:
           python "$GITHUB_WORKSPACE/tests/test_r36s_rc11_vertex_loader_reuse.py" "$PWD"
           python "$GITHUB_WORKSPACE/r36s/starfox_rc12_multipipeline_loader_cache_patch.py" "$PWD"
           python "$GITHUB_WORKSPACE/tests/test_r36s_rc12_multipipeline_loader_cache.py" "$PWD"
+          python "$GITHUB_WORKSPACE/r36s/starfox_rc13_direct_index_stream_patch.py" "$PWD"
+          python "$GITHUB_WORKSPACE/tests/test_r36s_rc13_direct_index_stream.py" "$PWD"
+          grep -n "map_indices" extern/aurora/lib/gfx/recording.cpp
           grep -n "r36sLoaderSlots" extern/aurora/lib/gx/command_processor.cpp
           # RC12 replaces the RC11 single-entry cache; reject stale references instead of requiring them.
           if grep -n "r36sPreviousPipeline" extern/aurora/lib/gx/command_processor.cpp; then
@@ -382,8 +385,8 @@ jobs:
 
           {
             echo "R36S patch commit: $GITHUB_SHA"
-            echo "Port version: R36S-RC12 MULTI-PIPELINE VERTEX LOADER CACHE (hardware validation pending)"
-            echo "RC12 256-entry pipeline keyed GX vertex loader cache for repeated alternating pipelines; RC10 bulk indices and established graphics kept"
+            echo "Port version: R36S-RC13 DIRECT GX INDEX STREAM (hardware validation pending)"
+            echo "RC13 directly writes GX triangle/quad indices to mapped frame stream without staging copy; RC12 loader cache and visual fixes retained"
             echo "Foxhollow commit: 51c0deb7be83e8d5a9961f018dd34c8e0022e062 (v1.0.12)"
             echo "Build container: quay.io/pypa/manylinux_2_28_aarch64"
             echo "Target: R36S ArkOS AeUX / aarch64 / glibc 2.30"
