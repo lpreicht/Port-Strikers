@@ -87,3 +87,28 @@ For a useful test, open the same large outdoor/water view and collect at
 least 30 seconds of gameplay. Supply the full log.txt after exiting.
 Source contracts alone do not confirm successful ARM build or runtime yet.
 
+
+
+RC6 SAFE GX PER-DRAW PROFILING COST A/B (2026-10-09)
+From the confirmed RC5 device log: map 8 median 7.43 FPS; GX FIFO drain
+50.14ms / frame, Aurora frame_prepare 15.84ms / frame, submit 21.65ms / frame.
+The current command_processor.cpp hashes draw keys and full pipeline
+configurations and inserts them into diagnostic hash maps on each GX draw
+when renderStats=true. RC6 skips ONLY this optional statistics work.
+No GX pipeline, draw batching, shader, vertex decode, texture, water,
+EFB copy, shadow or presentation semantics have been altered.
+
+DEFAULT: starfoxadventures/conf/gx-heavy-stats.txt missing or containing 0
+  -> R36S_GX_HEAVY_STATS=0 -> skip per-draw statistics hashing (RC6).
+CONTROL: write a single 1 to conf/gx-heavy-stats.txt
+  -> R36S_GX_HEAVY_STATS=1 -> original RC5 per-draw diagnostics.
+Leave rc4-profile.txt=1 and compare the same water/outdoor viewpoint
+on 0 vs 1, using [R36S V025 timing] and [r36s-rc5-gx] fifo_drain
+medians. Stats lines [gx-batch] still report merged draw counts;
+[gx-variance] is expected to show 0 entries when heavy stats=0.
+If there is no measurable gain, restore 1 and investigate vertex
+decoder or texture resolve timing in a subsequent independent test.
+
+The source contract checks and GitHub CI do not prove device FPS gains.
+Preserve game data, save data, shadows, decals and reflective water.
+
