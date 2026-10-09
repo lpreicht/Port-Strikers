@@ -161,6 +161,11 @@ export AURORA_GLES_DRIVER_PROBE=0
 # when the startup probe count is zero. Explicit 0 disables both barriers
 # and probing, matching the validated V053 behavior. 'pass' is NOT off.
 export AURORA_GLES_DRAW_BARRIER=0
+# RC15 diagnostic: single-instance indexed draws go through the GLES 3.1
+# glDrawElementsInstanced(...,1) call rather than glDrawRangeElements.
+# Index data, vertex input, shader and draw ordering are unchanged.
+# This is an automatic one-build Mali-G31 driver performance experiment.
+export AURORA_GLES_INDEX_DRAW=instanced
 # The Dawn-only shadow experiment did not correct flicker and increased
 # render time. Restore the faster Direct-GLES baseline, and diagnose repeated
 # square shadow-mask GPU texture overwrites with immutable snapshots instead.
@@ -297,13 +302,14 @@ if [ "${FOXHOLLOW_PERFORMANCE:-1}" = 1 ]; then
   done
 fi
 
-echo "R36S_PERF_TEST=RC14_SAMPLED_GLES_CPU_PHASES_20261010"
+echo "R36S_PERF_TEST=RC15_GLES_INSTANCED_INDEX_DRAW_20261010"
 echo "R36S_PERF_TEST_REFERENCE_SCALE=0.6667"
 echo "FOXHOLLOW_RENDER_SCALE=$FOXHOLLOW_RENDER_SCALE"
 echo "FOXHOLLOW_LANGUAGE=$FOXHOLLOW_LANGUAGE"
 echo "FOXHOLLOW_PRESENT=$FOXHOLLOW_PRESENT"
 echo "AURORA_GLES_DRIVER_PROBE=$AURORA_GLES_DRIVER_PROBE"
 echo "AURORA_GLES_DRAW_BARRIER=$AURORA_GLES_DRAW_BARRIER"
+echo "AURORA_GLES_INDEX_DRAW=$AURORA_GLES_INDEX_DRAW"
 echo "R36S_SHADOW_FORCE_DAWN=$R36S_SHADOW_FORCE_DAWN"
 echo "R36S_DECAL_DEPTH_FIX=$R36S_DECAL_DEPTH_FIX"
 echo "R36S_WATER_FAST=$R36S_WATER_FAST"
