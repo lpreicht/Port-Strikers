@@ -151,6 +151,9 @@ export AURORA_GLES_DRAW_BARRIER=0
 # render time. Restore the faster Direct-GLES baseline, and diagnose repeated
 # square shadow-mask GPU texture overwrites with immutable snapshots instead.
 export R36S_SHADOW_FORCE_DAWN=0
+# DIAGNOSTIC ONLY: compare the same ground at 20-second projected-shadow ON/OFF intervals.
+# Terrain, lighting, audio and normal geometry are unaffected by the toggle.
+export R36S_SHADOW_ISOLATION=1
 # Previous water-FX lite optimization did not improve performance; restore all\n# cosmetic water rendering by default, retaining opt-in comparison mode.
 export R36S_WATER_LITE="${R36S_WATER_LITE:-0}"
 # R36S FULL-VIDEO-CADENCE DIAGNOSTIC: process every THP video frame reached
@@ -188,6 +191,7 @@ echo "FOXHOLLOW_PRESENT=$FOXHOLLOW_PRESENT"
 echo "AURORA_GLES_DRIVER_PROBE=$AURORA_GLES_DRIVER_PROBE"
 echo "AURORA_GLES_DRAW_BARRIER=$AURORA_GLES_DRAW_BARRIER"
 echo "R36S_SHADOW_FORCE_DAWN=$R36S_SHADOW_FORCE_DAWN"
+echo "R36S_SHADOW_ISOLATION=$R36S_SHADOW_ISOLATION"
 echo "R36S_WATER_LITE=$R36S_WATER_LITE"
 echo "R36S_MENU_VIDEO_STRIDE=$R36S_MENU_VIDEO_STRIDE"
 echo "CPU_GOVERNOR=$(cat "$cpu_governor_path" 2>/dev/null || echo unavailable)"
