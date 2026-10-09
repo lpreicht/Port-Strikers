@@ -245,7 +245,7 @@ export R36S_SWAP_INTERVAL="$R36S_SWAP_INTERVAL_REQUEST"
 # RC8: already-existing Aurora nested CPU profiler, sampled for only every
 # 60th frame, to avoid reintroducing expensive per-draw diagnostics.
 # Set conf/deep-profile.txt to 0 to disable without a new binary.
-R36S_DEEP_PROFILE_REQUEST=1
+R36S_DEEP_PROFILE_REQUEST=0
 if [ -r "$CONFDIR/deep-profile.txt" ]; then
   IFS= read -r deep_setting < "$CONFDIR/deep-profile.txt" || true
   case "$deep_setting" in
@@ -255,6 +255,17 @@ if [ -r "$CONFDIR/deep-profile.txt" ]; then
 fi
 export AURORA_DEEP_PROFILE="$R36S_DEEP_PROFILE_REQUEST"
 export AURORA_DEEP_INTERVAL=60
+# RC9 safe micro-optimization, exact triangle and quad indices.
+# 0 in conf/fast-gx-indices.txt reverts to the full RC8 index loops.
+R36S_FAST_GX_INDICES_REQUEST=1
+if [ -r "$CONFDIR/fast-gx-indices.txt" ]; then
+  IFS= read -r fast_index_setting < "$CONFDIR/fast-gx-indices.txt" || true
+  case "$fast_index_setting" in
+    0|1) R36S_FAST_GX_INDICES_REQUEST="$fast_index_setting" ;;
+    *) echo "R36S: invalid fast-gx-indices.txt; using 1" ;;
+  esac
+fi
+export R36S_FAST_GX_INDICES="$R36S_FAST_GX_INDICES_REQUEST"
 export R36S_LIGHTMAP_INDIRECT_CAP="${R36S_LIGHTMAP_INDIRECT_CAP:-2}"
 export R36S_WATER_LITE="${R36S_WATER_LITE:-0}"
 # R36S FULL-VIDEO-CADENCE DIAGNOSTIC: process every THP video frame reached
@@ -286,7 +297,7 @@ if [ "${FOXHOLLOW_PERFORMANCE:-1}" = 1 ]; then
   done
 fi
 
-echo "R36S_PERF_TEST=RC8_SAMPLED_GX_DEEP_PROFILE_20261009"
+echo "R36S_PERF_TEST=RC9_SMALL_TRI_QUAD_GX_INDEX_AB_20261009"
 echo "R36S_PERF_TEST_REFERENCE_SCALE=0.6667"
 echo "FOXHOLLOW_RENDER_SCALE=$FOXHOLLOW_RENDER_SCALE"
 echo "FOXHOLLOW_LANGUAGE=$FOXHOLLOW_LANGUAGE"
@@ -303,6 +314,7 @@ echo "R36S_GX_HEAVY_STATS=$R36S_GX_HEAVY_STATS"
 echo "R36S_SWAP_INTERVAL=$R36S_SWAP_INTERVAL"
 echo "AURORA_DEEP_PROFILE=$AURORA_DEEP_PROFILE"
 echo "AURORA_DEEP_INTERVAL=$AURORA_DEEP_INTERVAL"
+echo "R36S_FAST_GX_INDICES=$R36S_FAST_GX_INDICES"
 echo "R36S_LIGHTMAP_INDIRECT_CAP=$R36S_LIGHTMAP_INDIRECT_CAP"
 echo "R36S_WATER_LITE=$R36S_WATER_LITE"
 echo "R36S_MENU_VIDEO_STRIDE=$R36S_MENU_VIDEO_STRIDE"
