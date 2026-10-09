@@ -218,6 +218,19 @@ if [ -r "$CONFDIR/rc4-profile.txt" ]; then
   esac
 fi
 export R36S_PRESENT_PROFILE="$R36S_PRESENT_PROFILE_REQUEST"
+# RC6: do not build extra hash tables for every GameCube draw only to print
+# per-draw GX variance stats. This skips diagnosis only; all actual rendering
+# and RC5 FIFO/endframe reporting still work. Set conf/gx-heavy-stats.txt
+# to 1 to re-enable the exact RC5 behavior for the A/B control test.
+R36S_GX_HEAVY_STATS_REQUEST=0
+if [ -r "$CONFDIR/gx-heavy-stats.txt" ]; then
+  IFS= read -r gx_stats_setting < "$CONFDIR/gx-heavy-stats.txt" || true
+  case "$gx_stats_setting" in
+    0|1) R36S_GX_HEAVY_STATS_REQUEST="$gx_stats_setting" ;;
+    *) echo "R36S: invalid gx-heavy-stats.txt; using 0" ;;
+  esac
+fi
+export R36S_GX_HEAVY_STATS="$R36S_GX_HEAVY_STATS_REQUEST"
 export R36S_LIGHTMAP_INDIRECT_CAP="${R36S_LIGHTMAP_INDIRECT_CAP:-2}"
 export R36S_WATER_LITE="${R36S_WATER_LITE:-0}"
 # R36S FULL-VIDEO-CADENCE DIAGNOSTIC: process every THP video frame reached
@@ -249,7 +262,7 @@ if [ "${FOXHOLLOW_PERFORMANCE:-1}" = 1 ]; then
   done
 fi
 
-echo "R36S_PERF_TEST=RC5_GX_FIFO_FRAME_PREPARE_TIMING_20261009"
+echo "R36S_PERF_TEST=RC6_GX_HEAVY_HASH_DIAGNOSTICS_AB_20261009"
 echo "R36S_PERF_TEST_REFERENCE_SCALE=0.6667"
 echo "FOXHOLLOW_RENDER_SCALE=$FOXHOLLOW_RENDER_SCALE"
 echo "FOXHOLLOW_LANGUAGE=$FOXHOLLOW_LANGUAGE"
@@ -262,6 +275,7 @@ echo "R36S_WATER_FAST=$R36S_WATER_FAST"
 echo "R36S_SORT_OPAQUE=$R36S_SORT_OPAQUE"
 echo "R36S_GL_DRAW_ERROR_CHECK=$R36S_GL_DRAW_ERROR_CHECK"
 echo "R36S_PRESENT_PROFILE=$R36S_PRESENT_PROFILE"
+echo "R36S_GX_HEAVY_STATS=$R36S_GX_HEAVY_STATS"
 echo "R36S_LIGHTMAP_INDIRECT_CAP=$R36S_LIGHTMAP_INDIRECT_CAP"
 echo "R36S_WATER_LITE=$R36S_WATER_LITE"
 echo "R36S_MENU_VIDEO_STRIDE=$R36S_MENU_VIDEO_STRIDE"
