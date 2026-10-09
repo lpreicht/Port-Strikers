@@ -206,6 +206,18 @@ if [ -r "$CONFDIR/gl-draw-checks.txt" ]; then
   esac
 fi
 export R36S_GL_DRAW_ERROR_CHECK="$R36S_GL_DRAW_CHECK_REQUEST"
+# RC4 profiles the complete Aurora end-frame path and KMSDRM display stages.
+# Only timestamps and periodic stderr diagnostics; original GL commands intact.
+# conf/rc4-profile.txt = 0 suppresses extra timing overhead, 1 enables.
+R36S_PRESENT_PROFILE_REQUEST=1
+if [ -r "$CONFDIR/rc4-profile.txt" ]; then
+  IFS= read -r profile_setting < "$CONFDIR/rc4-profile.txt" || true
+  case "$profile_setting" in
+    0|1) R36S_PRESENT_PROFILE_REQUEST="$profile_setting" ;;
+    *) echo "R36S: invalid rc4-profile.txt; using 1" ;;
+  esac
+fi
+export R36S_PRESENT_PROFILE="$R36S_PRESENT_PROFILE_REQUEST"
 export R36S_LIGHTMAP_INDIRECT_CAP="${R36S_LIGHTMAP_INDIRECT_CAP:-2}"
 export R36S_WATER_LITE="${R36S_WATER_LITE:-0}"
 # R36S FULL-VIDEO-CADENCE DIAGNOSTIC: process every THP video frame reached
@@ -237,7 +249,7 @@ if [ "${FOXHOLLOW_PERFORMANCE:-1}" = 1 ]; then
   done
 fi
 
-echo "R36S_PERF_TEST=GL_GETERROR_PER_DRAW_AB_RC3_20261009"
+echo "R36S_PERF_TEST=RC4_RENDER_PRESENT_PHASE_TIMING_20261009"
 echo "R36S_PERF_TEST_REFERENCE_SCALE=0.6667"
 echo "FOXHOLLOW_RENDER_SCALE=$FOXHOLLOW_RENDER_SCALE"
 echo "FOXHOLLOW_LANGUAGE=$FOXHOLLOW_LANGUAGE"
@@ -249,6 +261,7 @@ echo "R36S_DECAL_DEPTH_FIX=$R36S_DECAL_DEPTH_FIX"
 echo "R36S_WATER_FAST=$R36S_WATER_FAST"
 echo "R36S_SORT_OPAQUE=$R36S_SORT_OPAQUE"
 echo "R36S_GL_DRAW_ERROR_CHECK=$R36S_GL_DRAW_ERROR_CHECK"
+echo "R36S_PRESENT_PROFILE=$R36S_PRESENT_PROFILE"
 echo "R36S_LIGHTMAP_INDIRECT_CAP=$R36S_LIGHTMAP_INDIRECT_CAP"
 echo "R36S_WATER_LITE=$R36S_WATER_LITE"
 echo "R36S_MENU_VIDEO_STRIDE=$R36S_MENU_VIDEO_STRIDE"
