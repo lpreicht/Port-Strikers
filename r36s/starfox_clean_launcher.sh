@@ -140,13 +140,13 @@ export FOXHOLLOW_FRAME_LIMIT=0
 # Preserve shadows, lightmap cap, reflective water shaders and FX unchanged.
 # Optional A/B restore without rebuilding: write 0.6667 into
 # starfoxadventures/conf/render-scale.txt, or 0.5 for this profile.
-R36S_EFB_SCALE=0.5000
+R36S_EFB_SCALE=0.6667
 R36S_SCALE_CONFIG="$CONFDIR/render-scale.txt"
 if [ -r "$R36S_SCALE_CONFIG" ]; then
   IFS= read -r requested_scale < "$R36S_SCALE_CONFIG" || true
   case "$requested_scale" in
     0.5|0.5000|0.6667) R36S_EFB_SCALE="$requested_scale" ;;
-    *) echo "R36S: invalid render-scale.txt value; using 0.5000" ;;
+    *) echo "R36S: invalid render-scale.txt value; using 0.6667" ;;
   esac
 fi
 export FOXHOLLOW_RENDER_SCALE="$R36S_EFB_SCALE"
@@ -178,6 +178,20 @@ export R36S_DECAL_DEPTH_FIX=1
 export R36S_WATER_FAST="${R36S_WATER_FAST:-0}"
 # 2 = keep two of 4/8/16 indirect overlay layers, 0 = original full amount.
 # This can also affect some non-water indirect lightmaps; compare visually.
+# RC2 experiment: Aurora sorts only contiguous, opaque, depth-tested
+# GX draw runs by shader, texture and uniform window, reducing state churn.
+# Sorting can alter visuals for overlapping equal-depth surfaces.
+# Revert instantly WITHOUT replacing binary: place a single 0 in
+# starfoxadventures/conf/opaque-sort.txt (1 re-enables).
+R36S_SORT_REQUEST=1
+if [ -r "$CONFDIR/opaque-sort.txt" ]; then
+  IFS= read -r sort_setting < "$CONFDIR/opaque-sort.txt" || true
+  case "$sort_setting" in
+    0|1) R36S_SORT_REQUEST="$sort_setting" ;;
+    *) echo "R36S: invalid opaque-sort.txt; using 1" ;;
+  esac
+fi
+export R36S_SORT_OPAQUE="$R36S_SORT_REQUEST"
 export R36S_LIGHTMAP_INDIRECT_CAP="${R36S_LIGHTMAP_INDIRECT_CAP:-2}"
 export R36S_WATER_LITE="${R36S_WATER_LITE:-0}"
 # R36S FULL-VIDEO-CADENCE DIAGNOSTIC: process every THP video frame reached
@@ -209,7 +223,7 @@ if [ "${FOXHOLLOW_PERFORMANCE:-1}" = 1 ]; then
   done
 fi
 
-echo "R36S_PERF_TEST=EFB_PIXEL_COST_A_B_20261009"
+echo "R36S_PERF_TEST=OPAQUE_DRAW_SORT_AB_RC2_20261009"
 echo "R36S_PERF_TEST_REFERENCE_SCALE=0.6667"
 echo "FOXHOLLOW_RENDER_SCALE=$FOXHOLLOW_RENDER_SCALE"
 echo "FOXHOLLOW_LANGUAGE=$FOXHOLLOW_LANGUAGE"
@@ -219,6 +233,7 @@ echo "AURORA_GLES_DRAW_BARRIER=$AURORA_GLES_DRAW_BARRIER"
 echo "R36S_SHADOW_FORCE_DAWN=$R36S_SHADOW_FORCE_DAWN"
 echo "R36S_DECAL_DEPTH_FIX=$R36S_DECAL_DEPTH_FIX"
 echo "R36S_WATER_FAST=$R36S_WATER_FAST"
+echo "R36S_SORT_OPAQUE=$R36S_SORT_OPAQUE"
 echo "R36S_LIGHTMAP_INDIRECT_CAP=$R36S_LIGHTMAP_INDIRECT_CAP"
 echo "R36S_WATER_LITE=$R36S_WATER_LITE"
 echo "R36S_MENU_VIDEO_STRIDE=$R36S_MENU_VIDEO_STRIDE"
