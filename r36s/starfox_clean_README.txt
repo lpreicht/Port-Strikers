@@ -196,3 +196,31 @@ fast-gx-indices 1 and 0; compare [R36S V025 timing] retraces/s,
 [r36s-rc5-gx] fifo_drain, and [r36s-rc4-endframe] submit.
 Do not delete gamedata/conf or existing memory card/save data.
 
+
+
+RC10 AUTOMATIC CPU GEOMETRY PREPARATION OPTIMIZATION (2026-10-09)
+RC9 on R36S (map8, 29 timing windows): median retraces/s 9.00,
+GX FIFO drain 24.25ms, OpenGL submit 22.20ms. RC7 in its own
+slightly different scenes: 10.16 retraces/s, 21.29ms FIFO drain,
+22.10ms submit. RC9's tiny 3/4 vertex index fast path did not
+demonstrate a clear improvement, and no direct A/B is necessary.
+
+RC8's sampled frame 720 showed 18,386 draw_prepare calls within one
+rendered frame, about 34.8ms in vertex decode and 10.5ms in index
+generation. RC10 extends single-allocation, sequential index writes
+to GX_TRIANGLES and GX_QUADS with more than 3/4 vertices, using exact
+original u16 byte order, winding and wrap semantics. For draw batches,
+prepare_draw_state already resolves GX pipeline: RC10 avoids a
+redundant prepare_pipeline check in the subsequent vertex decode call.
+Other push_decoded_verts call sites keep original preparation.
+
+Full deep-profile instrumentation is now compiled OUT of the optimized
+release build to remove its overhead. Existing RC6 heavy stats OFF,
+RC7 presenter config and render correctness patches are preserved.
+All defaults are automatic. DO NOT ask user to edit numeric 0/1
+settings for comparison; user only installs the GitHub ZIP, plays in
+the water/outdoor scene and uploads one log.
+Preserve existing user files gamedata/, conf/, memory card and saves.
+No performance gain or image correctness is claimed until real R36S
+hardware validation after successful GitHub build.
+
