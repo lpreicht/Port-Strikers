@@ -32,7 +32,7 @@ for x in [
     "gfx::detail::increment_merged_draw_count();",
     "static std::array<R36SLoaderSlot, 256> r36sLoaderSlots{};",
 ]:assert x in c,x
-assert c.count("gfx::Range idxRange;")==2, "expected one in batch and one other function"
+assert c.count("gfx::Range idxRange;")==3, "preserve every existing index range declaration"
 assert c.count("const bool r36sDirectIndices =")==1
 assert c.count("map_indices(")==1
 
