@@ -220,7 +220,11 @@ jobs:
           python "$GITHUB_WORKSPACE/r36s/starfox_rc12_multipipeline_loader_cache_patch.py" "$PWD"
           python "$GITHUB_WORKSPACE/tests/test_r36s_rc12_multipipeline_loader_cache.py" "$PWD"
           grep -n "r36sLoaderSlots" extern/aurora/lib/gx/command_processor.cpp
-          grep -n "r36sPreviousPipeline" extern/aurora/lib/gx/command_processor.cpp
+          # RC12 replaces the RC11 single-entry cache; reject stale references instead of requiring them.
+          if grep -n "r36sPreviousPipeline" extern/aurora/lib/gx/command_processor.cpp; then
+            echo "ERROR: RC11 single-entry loader cache still present after RC12 patch" >&2
+            exit 1
+          fi
           grep -n "r36sAlreadyPrepared" extern/aurora/lib/gx/command_processor.cpp
           grep -n "r36s_fast_gx_indices_enabled" extern/aurora/lib/gx/command_processor.cpp
           grep -n "r36sRc8" extern/aurora/lib/gx/command_processor.cpp
