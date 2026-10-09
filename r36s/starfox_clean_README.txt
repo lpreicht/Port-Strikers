@@ -275,3 +275,28 @@ verification. Everything is preconfigured automatically; users
 only install the successful GitHub ZIP, run the game in the
 outdoor water area and send their log. Do not request manual
 0/1 config editing. Keep gamedata/conf/saves intact.
+
+
+RC13 DIRECT GX INDEX STREAM (2026-10-10)
+On-device RC12 map8 median retraces/s 11.30, fifo_drain
+14.91ms, frame_prepare 12.91ms, submit 20.70ms and
+renderer 62.82ms over 18 measurement windows.
+Prior RC11 map8 median 10.71 fps, 14.35ms GX,
+13.51ms preparation, 21.40ms submit, 65.64ms render
+over 20 windows. Camera/scene differences prevent attributing
+the observed difference conclusively to the pipeline cache.
+
+RC13 skips one ByteBuffer scratch write plus one index-stream copy
+for ordinary GX_TRIANGLES and GX_QUADS (1..8192 vertices) by
+reserving their EXACT index count directly in the existing mapped
+frame index stream, preserving GX winding, 16-bit wrapping, unusual
+partial quad behavior, alignment and GX merged index base.
+All indexed/points/lines/fan/strip/resident draws continue the
+proven original ByteBuffer+push_indices code. Aurora mapped GL
+frame-stream infrastructure itself is unchanged; no water, shadow,
+EFB, shader, GL synchronization or control alterations.
+
+RC13 build and R36S hardware performance/safety are pending until
+confirmed. No user 0/1 settings or manual A/B tests. Install only a
+successful GitHub ZIP, play at the water outdoor scene, send one log.
+Preserve gamedata/conf/memorycard/saves.
