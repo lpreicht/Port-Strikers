@@ -25,3 +25,24 @@ CURRENT CLEAN TEST GOALS
 - menu/title THP uses direct RGBA decode + max-3-frame catch-up
 - only actual Direct-GLES draw misses may wait for the queued pipeline (V053-style correctness fallback)
 - one permanent launcher; future tests replace this GitHub artifact
+
+
+RC3 R36S PERFORMANCE A/B (2026-10-09)
+- Only the draw-level OpenGL glGetError overhead is being tested.
+- RC3 default: R36S_GL_DRAW_ERROR_CHECK=0. Per-draw GL error checks are bypassed.
+  GL error checks at the end of every render pass remain enabled.
+- To restore the original draw-level error checks without reinstalling:
+  create starfoxadventures/conf/gl-draw-checks.txt with ONE line: 1
+- To return to RC3 test mode, change the line to: 0
+- Opaque draw sorting is OFF by default (it reduced state changes but did not
+  appreciably improve FPS). Override by writing 1 to conf/opaque-sort.txt.
+- Internal gameplay scale is restored to 0.6667 by default. If you previously
+  created conf/render-scale.txt with 0.5000, delete it or change to 0.6667
+  for comparable tests.
+- Keep the proven shadow, reflection, water, lightmap cap, and menu/audio
+  options unchanged during this diagnostic.
+- Use the same in-game viewpoint during both runs. Compare
+  [R36S V025 timing] retraces/s and render= values in separate logs.
+- This patch passed source checks only. A successful build, visual integrity,
+  and R36S performance improvement require hardware validation.
+
