@@ -201,6 +201,10 @@ jobs:
           python "$GITHUB_WORKSPACE/r36s/foxhollow_dvd_callback_pump_patch.py" "$PWD"
           python "$GITHUB_WORKSPACE/r36s/foxhollow_card_image_path_patch.py" "$PWD"
           python "$GITHUB_WORKSPACE/r36s/frame_profile_patch.py" "$PWD"
+          python "$GITHUB_WORKSPACE/r36s/starfox_rc4_present_timing_patch.py" "$PWD"
+          python "$GITHUB_WORKSPACE/tests/test_r36s_rc4_phase_profile.py" "$PWD"
+          grep -n "r36s-rc4-endframe" extern/aurora/lib/aurora.cpp
+          grep -n "r36s-rc4-present" extern/aurora/lib/window.cpp
           # Audio patch requires V025 VI phase instrumentation; apply strictly after it.
           python "$GITHUB_WORKSPACE/r36s/starfox_thp_audio_pump_fix.py" "$PWD"
           python "$GITHUB_WORKSPACE/r36s/starfox_thp_audio_prefetch_patch.py" "$PWD"
@@ -348,8 +352,8 @@ jobs:
 
           {
             echo "R36S patch commit: $GITHUB_SHA"
-            echo "Port version: R36S-RC3 DRAW-ERROR-CHECK-A-B (hardware validation pending)"
-            echo "RC3 glGetError A/B: R36S_GL_DRAW_ERROR_CHECK=0 bypasses per-draw checks but keeps end-of-pass checks; sort=0 baseline, EFB 0.6667, proven shadow/water/THP/audio preserved"
+            echo "Port version: R36S-RC4 END-FRAME/PRESENTER-PROFILER (hardware validation pending)"
+            echo "RC4 no-render-change diagnostics: time GX drain, encode, Dawn submit, GL/EGL/SDL presenter and swap individually; RC3 sort=0, error-check=0, EFB=0.6667 preserved"
             echo "Foxhollow commit: 51c0deb7be83e8d5a9961f018dd34c8e0022e062 (v1.0.12)"
             echo "Build container: quay.io/pypa/manylinux_2_28_aarch64"
             echo "Target: R36S ArkOS AeUX / aarch64 / glibc 2.30"
