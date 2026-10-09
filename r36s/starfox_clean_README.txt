@@ -326,3 +326,34 @@ RC12 cache and validated graphics remain.
 Do not alter 0/1 flags or perform manual A/B tests. Install
 successful GitHub ZIP, play near water, send a log. Keep conf,
 gamedata, memory cards and saves untouched.
+
+
+RC15 SINGLE-INSTANCE INSTANCED INDEX DRAW, AUTOMATIC R36S TEST (2026-10-10)
+RC14 on-device profile in heavy outdoor scene (map8, frames 600..1320):
+13 sampled frames at 1/60 cadence, weighted GLES CPU time shares:
+pipeline lookup/state 7.6%, resource binding 21.7%, actual draw
+calls incl. draw-barrier bookkeeping 70.6%. Across these samples
+the three phases average 0.84ms + 2.39ms + 7.76ms.
+At sampled frame 1320: 503 draws, 1.206ms pipeline,
+3.552ms resources, 12.088ms draw -> 16.845ms three phases.
+This is NOT the complete frame time or measured GPU execution.
+RC14 map8 window median (22 windows) 10.50 retraces/s,
+GX FIFO 16.50ms, submit 21.66ms, total render 66.92ms;
+scene loads vary and are not controlled matched-frame tests.
+
+RC15 automatically selects the already-implemented Aurora ARM
+AURORA_GLES_INDEX_DRAW=instanced branch on this R36S build.
+For GX indexed draws with exactly one instance this replaces
+glDrawRangeElements(topology,start,end,count,type,ptr) with
+glDrawElementsInstanced(topology,count,type,ptr,1), eliminating the
+range-specific driver path while retaining identical index buffers,
+GL primitive topology, program, textures, vertex binding, order and
+effective instance count. Other draw paths remain unchanged.
+The original Aurora branch comments document stale rendering with
+plain glDrawElements on prior Mali drivers; the instanced alternative
+is a SPECULATIVE driver experiment, not yet proven correct or faster.
+The RC14 one-in-sixty CPU profiling stays enabled for before/after.
+Check actual geometry, water and shadows visually before accepting
+the performance results. If instanced is slower or incorrect,
+revert automatically in the next GitHub build, not by requiring
+manual 0/1 config edits. Keep gamedata/conf/memorycard/saves intact.
