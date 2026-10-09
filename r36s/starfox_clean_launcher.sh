@@ -134,7 +134,7 @@ export FOXHOLLOW_SCREEN_STYLE=narrow
 export FOXHOLLOW_FULLSCREEN=1
 export FOXHOLLOW_VSYNC=1
 export FOXHOLLOW_FRAME_LIMIT=0
-# RC2: restore the proven 0.6667 gameplay reference resolution.
+# RC3: keep 0.6667 reference resolution; only test per-draw GL error-check costs.
 # Previous 0.5000 pixel-fill A/B saved 44% of pixels but barely improved FPS.
 # Leave the original shadow, water and lightmap fixes intact.
 # Optional resolution A/B: write 0.5 or 0.6667 into
@@ -177,20 +177,35 @@ export R36S_DECAL_DEPTH_FIX=1
 export R36S_WATER_FAST="${R36S_WATER_FAST:-0}"
 # 2 = keep two of 4/8/16 indirect overlay layers, 0 = original full amount.
 # This can also affect some non-water indirect lightmaps; compare visually.
-# RC2 experiment: Aurora sorts only contiguous, opaque, depth-tested
+# RC2 found no meaningful frame-rate gain from opaque draw sorting.
+# Restore the unsorted baseline; allow opt-in comparison if desired.
+# Aurora sorts only contiguous, opaque, depth-tested
 # GX draw runs by shader, texture and uniform window, reducing state churn.
 # Sorting can alter visuals for overlapping equal-depth surfaces.
-# Revert instantly WITHOUT replacing binary: place a single 0 in
-# starfoxadventures/conf/opaque-sort.txt (1 re-enables).
-R36S_SORT_REQUEST=1
+# To re-enable RC2 behavior without rebuilding, write 1 to
+# starfoxadventures/conf/opaque-sort.txt.
+R36S_SORT_REQUEST=0
 if [ -r "$CONFDIR/opaque-sort.txt" ]; then
   IFS= read -r sort_setting < "$CONFDIR/opaque-sort.txt" || true
   case "$sort_setting" in
     0|1) R36S_SORT_REQUEST="$sort_setting" ;;
-    *) echo "R36S: invalid opaque-sort.txt; using 1" ;;
+    *) echo "R36S: invalid opaque-sort.txt; using 0" ;;
   esac
 fi
 export R36S_SORT_OPAQUE="$R36S_SORT_REQUEST"
+# RC3 Mali-G31 A/B: disable only optional per-draw glGetError() calls.
+# End-of-pass error detection, all GL draws and all stats remain intact.
+# Set starfoxadventures/conf/gl-draw-checks.txt to 1 to restore the exact
+# RC2 error-check behavior without recompiling. 0 is the RC3 experiment.
+R36S_GL_DRAW_CHECK_REQUEST=0
+if [ -r "$CONFDIR/gl-draw-checks.txt" ]; then
+  IFS= read -r check_setting < "$CONFDIR/gl-draw-checks.txt" || true
+  case "$check_setting" in
+    0|1) R36S_GL_DRAW_CHECK_REQUEST="$check_setting" ;;
+    *) echo "R36S: invalid gl-draw-checks.txt; using 0" ;;
+  esac
+fi
+export R36S_GL_DRAW_ERROR_CHECK="$R36S_GL_DRAW_CHECK_REQUEST"
 export R36S_LIGHTMAP_INDIRECT_CAP="${R36S_LIGHTMAP_INDIRECT_CAP:-2}"
 export R36S_WATER_LITE="${R36S_WATER_LITE:-0}"
 # R36S FULL-VIDEO-CADENCE DIAGNOSTIC: process every THP video frame reached
@@ -222,7 +237,7 @@ if [ "${FOXHOLLOW_PERFORMANCE:-1}" = 1 ]; then
   done
 fi
 
-echo "R36S_PERF_TEST=OPAQUE_DRAW_SORT_AB_RC2_20261009"
+echo "R36S_PERF_TEST=GL_GETERROR_PER_DRAW_AB_RC3_20261009"
 echo "R36S_PERF_TEST_REFERENCE_SCALE=0.6667"
 echo "FOXHOLLOW_RENDER_SCALE=$FOXHOLLOW_RENDER_SCALE"
 echo "FOXHOLLOW_LANGUAGE=$FOXHOLLOW_LANGUAGE"
@@ -233,6 +248,7 @@ echo "R36S_SHADOW_FORCE_DAWN=$R36S_SHADOW_FORCE_DAWN"
 echo "R36S_DECAL_DEPTH_FIX=$R36S_DECAL_DEPTH_FIX"
 echo "R36S_WATER_FAST=$R36S_WATER_FAST"
 echo "R36S_SORT_OPAQUE=$R36S_SORT_OPAQUE"
+echo "R36S_GL_DRAW_ERROR_CHECK=$R36S_GL_DRAW_ERROR_CHECK"
 echo "R36S_LIGHTMAP_INDIRECT_CAP=$R36S_LIGHTMAP_INDIRECT_CAP"
 echo "R36S_WATER_LITE=$R36S_WATER_LITE"
 echo "R36S_MENU_VIDEO_STRIDE=$R36S_MENU_VIDEO_STRIDE"
