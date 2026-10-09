@@ -250,3 +250,28 @@ and a hardware log from R36S confirms them. Users do not need to edit
 config flags or run A/B comparisons. Install the latest successful
 GitHub PortMaster ZIP, play outdoor/water scenes, upload the log.
 Keep gamedata, conf, saves and memory cards untouched.
+
+
+RC12 MULTI-PIPELINE VERTEX LOADER CACHE (2026-10-10)
+RC11 on the R36S in map 8 measured median 10.71 retraces/s,
+GX fifo_drain 14.35ms, GLES submit 21.40ms, renderer 65.64ms
+(20 timing windows). RC10 measured 9.64 retraces/s,
+GX fifo_drain 20.71ms, submit 21.40ms, renderer 72.81ms
+(32 timing windows). Camera views and loads vary; not a
+controlled matched-frame A/B.
+
+RC11 only cached the immediately prior GX pipeline. RC12 adds
+256 direct-mapped entries (4 KiB) to reuse decoded vertex loader
+pointers across alternating GX pipeline refs, including across
+frames. Every cache hit checks the ENTIRE 64-bit pipeline hash.
+A collision/miss invokes Aurora's original vertex_loader(config).
+The vertex loader objects are stable heap allocations; no shader
+or geometry bytes, uniforms, render passes, water, shadow or
+EFB copying has changed. Only batch_draw uses this cache;
+all other rendering paths use Aurora's original lookup.
+
+Build and actual performance still require real hardware
+verification. Everything is preconfigured automatically; users
+only install the successful GitHub ZIP, run the game in the
+outdoor water area and send their log. Do not request manual
+0/1 config editing. Keep gamedata/conf/saves intact.
