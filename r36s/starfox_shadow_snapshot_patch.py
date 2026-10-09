@@ -23,10 +23,12 @@ repl="""  // R36S GPU shadow snapshots: do not overwrite a texture still referen
   // by earlier recorded draw commands or an in-flight frame. The cache owns
   // the latest generation, while the previous TextureHandles remain alive
   // until every referencing command has completed.
-  if (r36sNativeShadowMask && it->second.revision != 0) {
+  // Square projected shadow masks only. Exclude rectangular 160x120 intro and
+  // full-frame water/reflection copies to preserve their proven fast path.
+  if (r36sNativeShadowMask && dstWidth == dstHeight && it->second.revision != 0) {
     it->second.handle = gfx::new_conv_texture(dstWidth, dstHeight, texCopyFmt, "R36S shadow snapshot");
     static unsigned r36sShadowSnapshots = 0;
-    if (++r36sShadowSnapshots <= 6 || r36sShadowSnapshots % 300 == 0) {
+    if (++r36sShadowSnapshots <= 12 || r36sShadowSnapshots % 240 == 0) {
       std::fprintf(stderr, "[r36s-shadow-snapshot] n=%u fmt=%u %ux%u fresh_target=1\\n",
                    r36sShadowSnapshots, static_cast<unsigned>(texCopyFmt), dstWidth, dstHeight);
     }
@@ -40,4 +42,34 @@ if "r36sNativeShadowMask" not in s:
     raise SystemExit("requires native-shadow mask patch before snapshot")
 s=s.replace(anchor,repl,1)
 p.write_text(s)
-print("R36S immutable GPU snapshots for repeated shadow copies installed")
+
+# Diagnostic: confirm whether the GPU shadow result is actually looked up by
+# the GX sampled-texture metadata, instead of accidentally reading stale CPU RAM.
+tex = root/"extern/aurora/lib/gx/texture.cpp"
+s = tex.read_text()
+old = """    const GXState::CopyTextureRef* copyRef = copyIt != g_gxState.copyTextures.end() ? &copyIt->second : nullptr;
+    if (copyRef != nullptr) {
+      gfx::on_copy_texture_sampled(copyRef->handle);
+    }
+"""
+new = """    const GXState::CopyTextureRef* copyRef = copyIt != g_gxState.copyTextures.end() ? &copyIt->second : nullptr;
+    if (obj.width() == 256 && obj.height() == 256) {
+      static unsigned r36sShadowSampleChecks = 0;
+      const unsigned check = ++r36sShadowSampleChecks;
+      if (check <= 24 || check % 240 == 0) {
+        std::fprintf(stderr,
+                     "[r36s-shadow-bind] n=%u tex_obj=%u gx_fmt=%u copy_ref=%u revision=%u copy_size=%ux%u\\n",
+                     check, obj.texObjId, static_cast<unsigned>(obj.format()),
+                     copyRef != nullptr ? 1u : 0u,
+                     copyRef != nullptr ? copyRef->revision : 0u,
+                     copyRef != nullptr && copyRef->handle ? copyRef->handle->size.width : 0u,
+                     copyRef != nullptr && copyRef->handle ? copyRef->handle->size.height : 0u);
+      }
+    }
+    if (copyRef != nullptr) {
+      gfx::on_copy_texture_sampled(copyRef->handle);
+    }
+"""
+assert s.count(old) == 1, f"shadow bind metadata anchor mismatch: {s.count(old)}"
+tex.write_text(s.replace(old, new, 1))
+print("R36S immutable GPU snapshots + sampled 256px shadow texture binding diagnostic installed")
