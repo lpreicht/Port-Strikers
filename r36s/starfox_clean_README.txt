@@ -139,3 +139,35 @@ render-scale.txt=0.6667, and all existing visual safety flags unchanged.
 Do not remove user gamedata or conf. Device performance is not verified
 until the new build runs successfully.
 
+
+
+RC8: SAMPLED GX CPU HOT-PATH PROFILING (2026-10-09)
+Hardware-tested RC7 showed map 8 interval median ~10.16 FPS
+(vs RC6 ~9.19), GX fifo_drain ~21.29ms, Dawn submit ~22.10ms
+and SDL swap ~12.65ms (views not perfectly matched).
+SDL request=0 was accepted by SDL, but tearing and VSync-on control
+have not yet been tested. Do not interpret as a proven swap advantage.
+
+The upstream Aurora sampled deep profiler is compiled in for RC8;
+AURORA_DEEP_PROFILE=1 and AURORA_DEEP_INTERVAL=60 enable detailed
+timing for only each 60th frame, avoiding RC5 heavy 10k-draw/frame
+statistics overhead. New added scopes:
+  vertex_upload_decode (CPU GX vertex preparation)
+  index_generate (GameCube primitive index list preparation)
+Existing nested Aurora scopes: fifo_process, draw_prepare,
+pipeline_build, texture_resolve_bind, uniform_build.
+
+Run game for >60 game frames in the same outdoor Map 8 water view.
+For more reliable samples, test a few minutes and send complete log.
+Look for [deep-profile] frame=... lane=fifo lines and compare
+wall_us/self_wall_us/calls for the work zones, in addition to
+[r36s-rc5-gx] and [R36S V025 timing].
+Conf toggles:
+  deep-profile.txt 0 -> disable sampled deep profiler
+  deep-profile.txt 1/missing -> enable sampled deep profiler
+  gx-heavy-stats.txt 0 -> KEEP RC6 speed optimization
+  swap-interval.txt 0 -> RC7 uncapped presenter experiment
+  swap-interval.txt 1 -> RC6 synchronized presenter (A/B control)
+No changes to GX graphics semantics, EFB, water, shadows or controls.
+Build success and on-device runtime are not established until tests.
+
