@@ -158,7 +158,12 @@ export R36S_DECAL_DEPTH_FIX=1
 # Previous water-FX lite optimization did not improve performance; restore all\n# cosmetic water rendering by default, retaining opt-in comparison mode.
 # First fast-water quality preset: keep splash/ripple overlays; only simplify the
 # visible water surface\x27s two costly indirect texture lookups. 0=original water.
-export R36S_WATER_FAST="${R36S_WATER_FAST:-1}"
+# The previous indirect-water shader simplification did not improve performance.
+# Use original water shading for this independent draw-call budget experiment.
+export R36S_WATER_FAST="${R36S_WATER_FAST:-0}"
+# 2 = keep two of 4/8/16 indirect overlay layers, 0 = original full amount.
+# This can also affect some non-water indirect lightmaps; compare visually.
+export R36S_LIGHTMAP_INDIRECT_CAP="${R36S_LIGHTMAP_INDIRECT_CAP:-2}"
 export R36S_WATER_LITE="${R36S_WATER_LITE:-0}"
 # R36S FULL-VIDEO-CADENCE DIAGNOSTIC: process every THP video frame reached
 # by the VI callback. This removes the deliberate alternate-frame JPEG skip.
@@ -197,6 +202,7 @@ echo "AURORA_GLES_DRAW_BARRIER=$AURORA_GLES_DRAW_BARRIER"
 echo "R36S_SHADOW_FORCE_DAWN=$R36S_SHADOW_FORCE_DAWN"
 echo "R36S_DECAL_DEPTH_FIX=$R36S_DECAL_DEPTH_FIX"
 echo "R36S_WATER_FAST=$R36S_WATER_FAST"
+echo "R36S_LIGHTMAP_INDIRECT_CAP=$R36S_LIGHTMAP_INDIRECT_CAP"
 echo "R36S_WATER_LITE=$R36S_WATER_LITE"
 echo "R36S_MENU_VIDEO_STRIDE=$R36S_MENU_VIDEO_STRIDE"
 echo "CPU_GOVERNOR=$(cat "$cpu_governor_path" 2>/dev/null || echo unavailable)"
