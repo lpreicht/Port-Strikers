@@ -224,3 +224,29 @@ Preserve existing user files gamedata/, conf/, memory card and saves.
 No performance gain or image correctness is claimed until real R36S
 hardware validation after successful GitHub build.
 
+
+
+RC11 AUTOMATIC VERTEX LOADER REUSE (2026-10-10)
+On-device RC10 in the outdoor map 8 measured median 9.64 retraces/s
+(32 windows), GX fifo_drain 20.71ms, GLES submit 21.40ms,
+render 72.81ms. Prior RC9 same area median 9.00 retraces/s
+(29 windows), GX 24.25ms, submit 22.20ms, render 79.05ms.
+Different camera angles and loads; this is suggestive, not a
+controlled A/B measurement.
+
+RC8 deep profiler highlighted vertex_upload_decode (~34.8ms in
+one high-load frame). Aurora vertex_loader() hashes the entire
+attribute format on EVERY draw to find the VertexLoader. RC11
+reuses the cached loader when the already-resolved GX pipeline ref
+has not changed. The pipeline hash includes all shaderConfig vertex
+layout attributes, and VertexLoader objects are heap-stable
+under Aurora's unique_ptr cache. Every pipeline change triggers the
+original vertex_loader(config) lookup; non-batch callers are unchanged.
+No GL shader, EFB/shadow/water, vertex decoding arithmetic, texture
+coordinates, control or presenter changes.
+
+Performance improvements are hypotheses until the GitHub build passes
+and a hardware log from R36S confirms them. Users do not need to edit
+config flags or run A/B comparisons. Install the latest successful
+GitHub PortMaster ZIP, play outdoor/water scenes, upload the log.
+Keep gamedata, conf, saves and memory cards untouched.
