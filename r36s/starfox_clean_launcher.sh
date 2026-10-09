@@ -147,6 +147,10 @@ export AURORA_GLES_DRIVER_PROBE=0
 # when the startup probe count is zero. Explicit 0 disables both barriers
 # and probing, matching the validated V053 behavior. 'pass' is NOT off.
 export AURORA_GLES_DRAW_BARRIER=0
+# R36S isolated shadow-pass correctness test: only square <=512 px B8/R4/Z8
+# source passes are fully recorded via Dawn instead of Direct-GLES replay.
+# THP video/audio and all ordinary scene passes remain unchanged.
+export R36S_SHADOW_FORCE_DAWN=1
 # Previous water-FX lite optimization did not improve performance; restore all\n# cosmetic water rendering by default, retaining opt-in comparison mode.
 export R36S_WATER_LITE="${R36S_WATER_LITE:-0}"
 # R36S FULL-VIDEO-CADENCE DIAGNOSTIC: process every THP video frame reached
@@ -183,6 +187,7 @@ echo "FOXHOLLOW_LANGUAGE=$FOXHOLLOW_LANGUAGE"
 echo "FOXHOLLOW_PRESENT=$FOXHOLLOW_PRESENT"
 echo "AURORA_GLES_DRIVER_PROBE=$AURORA_GLES_DRIVER_PROBE"
 echo "AURORA_GLES_DRAW_BARRIER=$AURORA_GLES_DRAW_BARRIER"
+echo "R36S_SHADOW_FORCE_DAWN=$R36S_SHADOW_FORCE_DAWN"
 echo "R36S_WATER_LITE=$R36S_WATER_LITE"
 echo "R36S_MENU_VIDEO_STRIDE=$R36S_MENU_VIDEO_STRIDE"
 echo "CPU_GOVERNOR=$(cat "$cpu_governor_path" 2>/dev/null || echo unavailable)"
