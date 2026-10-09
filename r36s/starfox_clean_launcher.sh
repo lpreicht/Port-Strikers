@@ -134,7 +134,22 @@ export FOXHOLLOW_SCREEN_STYLE=narrow
 export FOXHOLLOW_FULLSCREEN=1
 export FOXHOLLOW_VSYNC=1
 export FOXHOLLOW_FRAME_LIMIT=0
-export FOXHOLLOW_RENDER_SCALE=0.6667
+# R36S 2026-10-09 isolated EFB pixel-cost A/B experiment.
+# Wide outdoor/water views show 5-10 retraces/s with 250-380 draws/frame.
+# 0.5 = 320x240 EFB (43.8% fewer pixels than 0.6667), full 640x480 output.
+# Preserve shadows, lightmap cap, reflective water shaders and FX unchanged.
+# Optional A/B restore without rebuilding: write 0.6667 into
+# starfoxadventures/conf/render-scale.txt, or 0.5 for this profile.
+R36S_EFB_SCALE=0.5000
+R36S_SCALE_CONFIG="$CONFDIR/render-scale.txt"
+if [ -r "$R36S_SCALE_CONFIG" ]; then
+  IFS= read -r requested_scale < "$R36S_SCALE_CONFIG" || true
+  case "$requested_scale" in
+    0.5|0.5000|0.6667) R36S_EFB_SCALE="$requested_scale" ;;
+    *) echo "R36S: invalid render-scale.txt value; using 0.5000" ;;
+  esac
+fi
+export FOXHOLLOW_RENDER_SCALE="$R36S_EFB_SCALE"
 export FOXHOLLOW_LANGUAGE=de
 export FOXHOLLOW_REV=1
 export FOXHOLLOW_MEMORY_CARD="$CONFDIR/memorycard.raw"
@@ -194,6 +209,8 @@ if [ "${FOXHOLLOW_PERFORMANCE:-1}" = 1 ]; then
   done
 fi
 
+echo "R36S_PERF_TEST=EFB_PIXEL_COST_A_B_20261009"
+echo "R36S_PERF_TEST_REFERENCE_SCALE=0.6667"
 echo "FOXHOLLOW_RENDER_SCALE=$FOXHOLLOW_RENDER_SCALE"
 echo "FOXHOLLOW_LANGUAGE=$FOXHOLLOW_LANGUAGE"
 echo "FOXHOLLOW_PRESENT=$FOXHOLLOW_PRESENT"
