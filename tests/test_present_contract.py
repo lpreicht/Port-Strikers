@@ -16,6 +16,7 @@ fixture = r'''
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
+#include <chrono>
 #define AURORA_R36S_OFFSCREEN 1
 using EGLDisplay = void*; using EGLContext = void*; using EGLSurface = void*;
 using GLuint = unsigned; using GLenum = unsigned; using GLsizei = int;
@@ -50,6 +51,12 @@ int eglSwapBuffers(EGLDisplay,EGLSurface){return 1;}
 bool SDL_GL_MakeCurrent(void*,SDL_GLContext c){if(bindFails && c)return false;if(sdlCachedContext==c)return true;sdlCachedContext=c;return eglMakeCurrent(g_r36sPresentDisplay,g_r36sPresentSurface,g_r36sPresentSurface,c);}
 bool SDL_GL_SwapWindow(void*){if(swapFails || currentContext!=g_r36sPresentContext)return false;++flips;return true;}
 const char* SDL_GetError(){return "test";}
+// RC4 instrumentation uses SDL3 nanosecond clock; expose a compatible
+// wall-clock stub to the standalone Presenter contract harness.
+uint64_t SDL_GetTicksNS(){
+  return std::chrono::duration_cast<std::chrono::nanoseconds>(
+    std::chrono::steady_clock::now().time_since_epoch()).count();
+}
 GLsync glFenceSync(int,int){return (void*)30;}
 bool glIsTexture(GLuint){return visible;}
 int readBinding=0; GLenum glError=0;
