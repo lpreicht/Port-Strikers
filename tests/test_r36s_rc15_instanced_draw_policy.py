@@ -26,5 +26,5 @@ for needle in (
     '[r36s-rc14-gles-cpu] sampled_frame=',
 ):
     assert needle in gl, needle
-assert "export R36S_WATER_FAST=0" in launch or "R36S_WATER_FAST_REQUEST=0" in launch
+assert 'export R36S_WATER_FAST="${R36S_WATER_FAST:-0}"' in launch
 print("PASS RC15: automatic GLES instanced indexed-draw mode; original CPU GX geometry/GL state untouched")
