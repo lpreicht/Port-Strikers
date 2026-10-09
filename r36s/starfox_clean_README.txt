@@ -46,3 +46,23 @@ RC3 R36S PERFORMANCE A/B (2026-10-09)
 - This patch passed source checks only. A successful build, visual integrity,
   and R36S performance improvement require hardware validation.
 
+
+
+RC4 PHASE TIMING DIAGNOSTIC (2026-10-09)
+The RC3 draw-level glGetError experiment did not materially improve Map 8 FPS:
+~7.4 FPS median, ~106 ms median render phase. RC4 does not alter GX/EFB,
+shadows, water, texture sampling or SDL/EGL presentation commands.
+It splits native end-of-frame wall time into two stderr reports:
+- [r36s-rc4-endframe]: pre_gx, encode, submit, presenter, after (ms/frame)
+- [r36s-rc4-present]: fence, context_wait, blit, swap, restore (ms/frame)
+The sum of the RC4 endframe stages should approach the VI render timing;
+the presenter report subdivides the presenter stage further.
+To disable profiling for a performance control:
+  starfoxadventures/conf/rc4-profile.txt : a single line containing 0
+To re-enable the timing report: change the line to 1 (default if absent).
+R36S_GL_DRAW_ERROR_CHECK=0 and R36S_SORT_OPAQUE=0 are unchanged from RC3.
+Do not change scale, GPU governor, shadows, texture or water flags between
+measurements. Collect at least 20-30 seconds of stable gameplay at the same
+large outdoor/water viewpoint, and provide the complete runtime log.
+RC4 has source-level contracts only until GitHub Actions and device run pass.
+
