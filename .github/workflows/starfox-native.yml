@@ -336,7 +336,7 @@ jobs:
 
           {
             echo "R36S patch commit: $GITHUB_SHA"
-            echo "Port version: R36S-RC1 INTRO-VIDEO-RESTORED-AUDIO-READAHEAD (hardware validation pending)"
+            echo "Port version: R36S-RC1 INTRO-FULLRATE-THP-VIDEO-AUDIO-READAHEAD (hardware validation pending)"
             echo "Shadow copy correction: native <=256px B8/R4/Z8 destinations; stable cached shadow-texture identity; safe UV clipping"
             echo "Foxhollow commit: 51c0deb7be83e8d5a9961f018dd34c8e0022e062 (v1.0.12)"
             echo "Build container: quay.io/pypa/manylinux_2_28_aarch64"
@@ -349,7 +349,7 @@ jobs:
             echo "Uniform compatibility: Direct-GLES uses Dawn uniforms; R36S model shadow source 256px clipped-EFB fix; optional Dawn shadow fallback"
             echo "Stream uploads: mapped GL streams enabled (restored V053 setting)"
             echo "V053 visual safety: white missing-vertex-color fallback; global blur EFB-feedback bypass; Spirit Vision postprocess only outside scripted sequences"
-            echo "Timing/performance: MENU VIDEO HALF-RATE (stride 2) + 16-buffer THP audio sidecar + 10-frame independent audio prefetch + starvation counters"
+            echo "Timing/performance: MENU VIDEO EVERY THP FRAME (stride 1) + 16-buffer THP audio sidecar + 10-frame independent audio prefetch + starvation counters"
             echo "SDL: shared SDL3-to-system-SDL2 PortMaster shim 6057d79b (ArkOS KMSDRM + native ALSA)"
             echo "Audio queue: 200 ms (restored V053 underrun guard)"
             echo "DVD loader: direct nod path open (RVZ diagnostics enabled)"
