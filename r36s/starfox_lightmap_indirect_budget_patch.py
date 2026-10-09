@@ -46,7 +46,7 @@ replacement = """    else
         }
         if (callbackCount <= 12 || callbackCount % 160 == 0) {
             fprintf(stderr,
-                    "[r36s-lightmap-indirect] call=%u requested=%u actual=%u saved_total=%u cap=%u\\n",
+                    "[r36s-lightmap-indirect] call=%u requested=%u actual=%u saved_total=%u cap=%u\n",
                     callbackCount, requestedPasses, (unsigned)passCount,
                     savedDraws, cap);
         }
