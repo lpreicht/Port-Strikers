@@ -300,3 +300,29 @@ RC13 build and R36S hardware performance/safety are pending until
 confirmed. No user 0/1 settings or manual A/B tests. Install only a
 successful GitHub ZIP, play at the water outdoor scene, send one log.
 Preserve gamedata/conf/memorycard/saves.
+
+
+RC14 SAMPLED GLES CPU PHASE BREAKDOWN (2026-10-10)
+On-device RC13 in outdoor map8 reached 13.08 median fps in 17
+timing windows versus 11.30 median fps in RC12's 18 windows.
+However RC13 mean was 11.76 versus RC12 mean 11.81 fps,
+so the distribution and scene/camera difference mean that the
+16% median jump does not prove a reliable overall FPS gain.
+The worst water-heavy frames remain around 8fps.
+
+To prepare an evidence-based larger optimization, RC14 samples
+one full frame out of 60 (not each draw separately), adding
+a tagged diagnostic line:
+[r36s-rc14-gles-cpu] sampled_frame=N passes=N draws=N
+pipeline_ms=N resources_ms=N draw_ms=N three_phases_ms=N
+These measure CPU wall time in GL pipeline lookup/state calls,
+GL texture/vertex/uniform resource bindings, and GL draw commands.
+They are NOT GPU elapsed time or full frame time. Other 59 frames
+do not run the clocks; existing GL calls and shader/visuals remain
+unchanged. We can compare sampled heavy Map8 frames and prioritize
+the largest category without guessing. RC13 direct index streaming,
+RC12 cache and validated graphics remain.
+
+Do not alter 0/1 flags or perform manual A/B tests. Install
+successful GitHub ZIP, play near water, send a log. Keep conf,
+gamedata, memory cards and saves untouched.
