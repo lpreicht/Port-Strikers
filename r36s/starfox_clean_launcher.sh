@@ -134,12 +134,11 @@ export FOXHOLLOW_SCREEN_STYLE=narrow
 export FOXHOLLOW_FULLSCREEN=1
 export FOXHOLLOW_VSYNC=1
 export FOXHOLLOW_FRAME_LIMIT=0
-# R36S 2026-10-09 isolated EFB pixel-cost A/B experiment.
-# Wide outdoor/water views show 5-10 retraces/s with 250-380 draws/frame.
-# 0.5 = 320x240 EFB (43.8% fewer pixels than 0.6667), full 640x480 output.
-# Preserve shadows, lightmap cap, reflective water shaders and FX unchanged.
-# Optional A/B restore without rebuilding: write 0.6667 into
-# starfoxadventures/conf/render-scale.txt, or 0.5 for this profile.
+# RC2: restore the proven 0.6667 gameplay reference resolution.
+# Previous 0.5000 pixel-fill A/B saved 44% of pixels but barely improved FPS.
+# Leave the original shadow, water and lightmap fixes intact.
+# Optional resolution A/B: write 0.5 or 0.6667 into
+# starfoxadventures/conf/render-scale.txt.
 R36S_EFB_SCALE=0.6667
 R36S_SCALE_CONFIG="$CONFDIR/render-scale.txt"
 if [ -r "$R36S_SCALE_CONFIG" ]; then
