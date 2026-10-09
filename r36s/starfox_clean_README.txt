@@ -171,3 +171,28 @@ Conf toggles:
 No changes to GX graphics semantics, EFB, water, shadows or controls.
 Build success and on-device runtime are not established until tests.
 
+
+
+RC9 REVERSIBLE TINY GX TRIANGLE/QUAD INDEX OPTIMIZATION (2026-10-09)
+RC8 source/hardware log contains >13,000 lines from sampled deep profiling;
+map 8 interval median ~9 FPS, frame=720 FIFO ~126ms with 18,386
+draw-prepare calls. Of these, vertex upload/decode ~34.81ms and index
+generation ~10.46ms in one expensive sample (NOT frame averages).
+RC9 uses direct index array appends for 3-vertex GX triangles and
+4-vertex GX quads, preserving byte-identical winding and index order.
+All other primitive sizes, merged base offsets, resident display lists,
+water/texture/render passes, shadow masks and EFB copies are unchanged.
+No GL state or synchronization change from RC7. Intended to remove
+many tiny index construction loops; real FPS benefit not yet measured.
+Runtime A/B switch in existing conf folder:
+  fast-gx-indices.txt absent or single line 1: RC9 exact-index fast path
+  fast-gx-indices.txt single line 0: original RC8 index generation
+deep-profile.txt now defaults to 0 to avoid emitting thousands of
+per-draw statistics lines; set it to 1 for further sampling if needed.
+Keep gx-heavy-stats.txt=0, swap-interval.txt as preferred, and
+render-scale.txt=0.6667 for comparable runs.
+Benchmark same view of map 8 looking at water for 30-60 seconds with
+fast-gx-indices 1 and 0; compare [R36S V025 timing] retraces/s,
+[r36s-rc5-gx] fifo_drain, and [r36s-rc4-endframe] submit.
+Do not delete gamedata/conf or existing memory card/save data.
+
