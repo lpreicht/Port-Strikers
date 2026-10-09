@@ -149,12 +149,11 @@ export AURORA_GLES_DRIVER_PROBE=0
 export AURORA_GLES_DRAW_BARRIER=0
 # Previous water-FX lite optimization did not improve performance; restore all\n# cosmetic water rendering by default, retaining opt-in comparison mode.
 export R36S_WATER_LITE="${R36S_WATER_LITE:-0}"
-# Moving THP video restored after standstill audio isolation.
-# 2=decode every second THP video frame to reduce expensive JPEG work;
-# 1=full-rate, 0=frozen image. The independent THP audio prefetch remains on.
-# Override any inherited debug setting so an old frozen-image variable
-# cannot accidentally carry over to the new package.
-export R36S_MENU_VIDEO_STRIDE=2
+# R36S FULL-VIDEO-CADENCE DIAGNOSTIC: process every THP video frame reached
+# by the VI callback. This removes the deliberate alternate-frame JPEG skip.
+# Audio retains the proven independent 16-buffer read-ahead fix.
+# 1=every video frame; 2=half-rate; 0=frozen video.
+export R36S_MENU_VIDEO_STRIDE=1
 
 if [ "${FOXHOLLOW_PERFORMANCE:-1}" = 1 ]; then
   if [ -r "$cpu_governor_path" ]; then
