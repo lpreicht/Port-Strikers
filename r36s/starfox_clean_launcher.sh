@@ -242,6 +242,19 @@ if [ -r "$CONFDIR/swap-interval.txt" ]; then
   esac
 fi
 export R36S_SWAP_INTERVAL="$R36S_SWAP_INTERVAL_REQUEST"
+# RC8: already-existing Aurora nested CPU profiler, sampled for only every
+# 60th frame, to avoid reintroducing expensive per-draw diagnostics.
+# Set conf/deep-profile.txt to 0 to disable without a new binary.
+R36S_DEEP_PROFILE_REQUEST=1
+if [ -r "$CONFDIR/deep-profile.txt" ]; then
+  IFS= read -r deep_setting < "$CONFDIR/deep-profile.txt" || true
+  case "$deep_setting" in
+    0|1) R36S_DEEP_PROFILE_REQUEST="$deep_setting" ;;
+    *) echo "R36S: invalid deep-profile.txt; using 1" ;;
+  esac
+fi
+export AURORA_DEEP_PROFILE="$R36S_DEEP_PROFILE_REQUEST"
+export AURORA_DEEP_INTERVAL=60
 export R36S_LIGHTMAP_INDIRECT_CAP="${R36S_LIGHTMAP_INDIRECT_CAP:-2}"
 export R36S_WATER_LITE="${R36S_WATER_LITE:-0}"
 # R36S FULL-VIDEO-CADENCE DIAGNOSTIC: process every THP video frame reached
@@ -273,7 +286,7 @@ if [ "${FOXHOLLOW_PERFORMANCE:-1}" = 1 ]; then
   done
 fi
 
-echo "R36S_PERF_TEST=RC7_KMSDRM_VSYNC_AB_20261009"
+echo "R36S_PERF_TEST=RC8_SAMPLED_GX_DEEP_PROFILE_20261009"
 echo "R36S_PERF_TEST_REFERENCE_SCALE=0.6667"
 echo "FOXHOLLOW_RENDER_SCALE=$FOXHOLLOW_RENDER_SCALE"
 echo "FOXHOLLOW_LANGUAGE=$FOXHOLLOW_LANGUAGE"
@@ -288,6 +301,8 @@ echo "R36S_GL_DRAW_ERROR_CHECK=$R36S_GL_DRAW_ERROR_CHECK"
 echo "R36S_PRESENT_PROFILE=$R36S_PRESENT_PROFILE"
 echo "R36S_GX_HEAVY_STATS=$R36S_GX_HEAVY_STATS"
 echo "R36S_SWAP_INTERVAL=$R36S_SWAP_INTERVAL"
+echo "AURORA_DEEP_PROFILE=$AURORA_DEEP_PROFILE"
+echo "AURORA_DEEP_INTERVAL=$AURORA_DEEP_INTERVAL"
 echo "R36S_LIGHTMAP_INDIRECT_CAP=$R36S_LIGHTMAP_INDIRECT_CAP"
 echo "R36S_WATER_LITE=$R36S_WATER_LITE"
 echo "R36S_MENU_VIDEO_STRIDE=$R36S_MENU_VIDEO_STRIDE"
