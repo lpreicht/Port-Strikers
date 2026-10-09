@@ -112,3 +112,30 @@ decoder or texture resolve timing in a subsequent independent test.
 The source contract checks and GitHub CI do not prove device FPS gains.
 Preserve game data, save data, shadows, decals and reflective water.
 
+
+
+RC7 OPTIONAL KMSDRM DISPLAY PACING A/B (2026-10-09)
+RC6 Map 8 median interval FPS improved from RC5 ~7.43 to ~9.19 (+24%),
+and GX FIFO drain time dropped ~49.85 -> ~25.37ms. This comparison
+covers differing views and does not replace controlled A/B measurement.
+The remaining SDL_GL_SwapWindow call often costs ~14-16 ms/frame,
+and sometimes more, despite other stages still being expensive.
+RC7 requests EGL/SDL swap interval 0 to test the extra page-flip pacing.
+This can cause visible tearing and may be ignored by the RK3326 driver.
+It does NOT alter the producer/presenter EGL fences or render commands.
+All RC5 GX phase and RC4 presenter timings remain enabled.
+
+A/B config file under existing starfoxadventures/conf:
+  swap-interval.txt missing or single line 0 = RC7 experimental uncapped
+  swap-interval.txt single line 1 = RC6 original synchronized presentation
+For controlled A/B compare same Map 8 scene and similar camera orientation,
+20-30 seconds each. Compare [r36s-rc4-present] swap= and
+[R36S V025 timing] retraces/s, rendering time, and tearing/visual glitches.
+The log header R36S_SWAP_INTERVAL= shows the requested setting;
+startup [INFO] confirms an SDL request, not necessarily driver acceptance.
+If image tearing or new glitches occur, set 1 and restart.
+Keep gx-heavy-stats.txt = 0 (RC6 fast path), rc4-profile.txt=1,
+render-scale.txt=0.6667, and all existing visual safety flags unchanged.
+Do not remove user gamedata or conf. Device performance is not verified
+until the new build runs successfully.
+
